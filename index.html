@@ -375,7 +375,7 @@ body.side-open .side{border-right-color:var(--line)}
       </div>
       <ul class="perks"><li>Unbegrenzte KI-Anfragen</li><li>Unbegrenzt Bilder</li><li>Unterstützt die Weiterentwicklung 💜</li></ul>
       <div class="row2"><button class="btn primary" id="planBuyBtn">✦ Plus holen</button></div>
-      <div class="field" style="margin-top:12px"><input type="text" id="planCode" placeholder="Plus-Code eingeben (GPTP1-…)" autocomplete="off" spellcheck="false"></div>
+      <div class="field" style="margin-top:12px"><input type="text" id="planCode" placeholder="Plus-Key oder Code eingeben" autocomplete="off" spellcheck="false"></div>
       <div class="row2"><button class="btn" id="planActivateBtn">Code aktivieren</button><button class="btn ghost" id="planRemoveBtn" hidden>Code entfernen</button></div>
       <div class="status info" id="planStatus"></div>
     </section>
@@ -1370,13 +1370,13 @@ function renderPlan(){
   $('planName').textContent=p.plus?'GPTProp Plus':'Gratis';
   $('planPrice').textContent=p.plus?'aktiv ✓':p.price;
   const lic=p.license;
-  $('planSub').textContent=p.plus?(lic&&lic.exp?`Gültig bis ${new Date(lic.exp).toLocaleDateString('de-DE')}`:'Unbegrenzt gültig')+(lic&&lic.name?` · ${lic.name}`:''):(lic&&lic.expired?`Dein Plus-Code ist am ${new Date(lic.exp).toLocaleDateString('de-DE')} abgelaufen.`:`${p.limits.req} KI-Anfragen und ${p.limits.img} Bilder pro Tag`);
+  $('planSub').textContent=lic&&lic.online?(p.plus?'Abo aktiv · Key an diesen PC gebunden':lic.reason||'Dein Abo ist nicht aktiv.'):p.plus?(lic&&lic.exp?`Gültig bis ${new Date(lic.exp).toLocaleDateString('de-DE')}`:'Unbegrenzt gültig')+(lic&&lic.name?` · ${lic.name}`:''):(lic&&lic.expired?`Dein Plus-Code ist am ${new Date(lic.exp).toLocaleDateString('de-DE')} abgelaufen.`:`${p.limits.req} KI-Anfragen und ${p.limits.img} Bilder pro Tag`);
   const set=(id,used,max)=>{$(id).textContent=`${used} / ${max}`;const bar=$(id+'Bar');bar.style.width=Math.min(100,used/max*100)+'%';bar.classList.toggle('full',used>=max);};
   set('uReq',p.usage.req,p.limits.req);set('uImg',p.usage.img,p.limits.img);
   $('planRemoveBtn').hidden=!lic;
 }
 function showLimit(reason){
-  const p=plan||{limits:{req:50,img:5},price:'2,99 € / Monat'};
+  const p=plan||{limits:{req:50,img:5},price:'3,99 € / Monat'};
   const what=reason==='img'?`deine ${p.limits.img} Gratis-Bilder`:`deine ${p.limits.req} Gratis-Anfragen`;
   addMessage(`<div class="limitcard"><b>✦ Für heute hast du ${what} verbraucht.</b><p>Morgen geht's automatisch weiter – oder du holst dir <b>GPTProp Plus</b> für ${esc(p.price)} und nutzt alles unbegrenzt.</p><div class="row2"><button class="btn primary" data-plan-buy>✦ Plus holen</button><button class="btn" data-open-plus>Code eingeben</button></div></div>`,'assistant');
 }
@@ -1391,16 +1391,21 @@ $('planBuyBtn').onclick=buyPlus;
 $('planActivateBtn').onclick=async()=>{
   const code=$('planCode').value.trim();
   if(!code){setStatus('planStatus','err','Bitte zuerst einen Code eingeben.');return;}
-  const r=await api.planActivate(code);plan=r.info;renderPlan();
+  $('planActivateBtn').disabled=true;setStatus('planStatus','info','Prüfe den Code…');
+  const r=await api.planActivate(code);plan=r.info;renderPlan();$('planActivateBtn').disabled=false;
   if(r.ok){$('planCode').value='';setStatus('planStatus','ok','✦ Willkommen bei GPTProp Plus! Alles ist jetzt unbegrenzt.');}
   else setStatus('planStatus','err',r.error);
 };
 $('planCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('planActivateBtn').click();});
-$('planRemoveBtn').onclick=async()=>{if(!confirm('Plus-Code von diesem PC entfernen?'))return;plan=await api.planRemove();renderPlan();setStatus('planStatus','info','Code entfernt – zurück im Gratis-Modus.');};
+$('planRemoveBtn').onclick=async()=>{if(!confirm('Plus-Code von diesem PC entfernen?'))return;plan=await api.planRemove();renderPlan();if(plan.removeError)setStatus('planStatus','err',plan.removeError);else setStatus('planStatus','info','Code entfernt – zurück im Gratis-Modus.');};
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-plan-buy]')){e.preventDefault();buyPlus();}
   else if(e.target.closest('[data-open-plus]')){e.preventDefault();openPlus();}
 });
+
+// Link von der Website (gptprop://aktivieren): Key eintragen, Nutzer bestätigt selbst
+if(api.onPlanLink)api.onPlanLink(async key=>{await openPlus();$('planCode').value=key;setStatus('planStatus','info','Key von der Website übernommen. Klick auf „Code aktivieren“, um Plus freizuschalten.');setTimeout(()=>$('planActivateBtn').focus(),300);});
+if(api.onPlanChanged)api.onPlanChanged(refreshPlan);
 
 /* Updates */
 function showUpdate(u){

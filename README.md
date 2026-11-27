@@ -33,12 +33,12 @@ Unter **[Releases](../../releases/latest)** gibt es zwei Varianten:
 
 ## ✦ Gratis & Plus
 
-| | Gratis | Plus (2,99 € / Monat) |
+| | Gratis | Plus (3,99 € / Monat) |
 |---|---|---|
 | KI-Anfragen | 50 pro Tag | unbegrenzt* |
 | Bilder | 5 pro Tag | unbegrenzt* |
 
-Plus wird mit einem Code unter *Einstellungen → GPTProp Plus* freigeschaltet. Der Online-Kauf ist noch nicht verfügbar.
+Plus wird mit einem Code unter *Einstellungen → GPTProp Plus* freigeschaltet. Der Online-Kauf ist noch nicht verfügbar. Online-Keys (ein Key pro PC, Aktivierung auch per `gptprop://`-Link) sind vorbereitet, aber noch nicht eingerichtet.
 
 \* Gilt für die Limits von GPTProp. Die Grenzen von Google für deinen eigenen Gemini-Key bleiben bestehen.
 

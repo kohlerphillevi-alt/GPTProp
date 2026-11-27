@@ -1,6 +1,10 @@
 {
-  "priceLabel": "2,99 € / Monat",
+  "priceLabel": "3,99 € / Monat",
   "buyUrl": "",
   "freeRequestsPerDay": 50,
-  "freeImagesPerDay": 5
+  "freeImagesPerDay": 5,
+  "online": {
+    "organizationId": "",
+    "sandbox": false
+  }
 }

@@ -731,14 +731,98 @@ function usageToday() {
   if (!settings.usage || settings.usage.day !== today()) settings.usage = { day: today(), req: 0, img: 0 };
   return settings.usage;
 }
+/* ---------- Online-Keys (Polar): ein Key pro Käufer, an diesen PC gebunden ---------- */
+// plus-config.json -> "online": { "organizationId": "…", "sandbox": false }. Leer = noch nicht eingerichtet.
+const ONLINE = PLUS_CFG.online || {};
+const ONLINE_GRACE = 7 * 24 * 3600e3; // so lange gilt Plus ohne Internet nach der letzten Prüfung
+const isOnlineKey = (c) => /^[A-Za-z0-9_-]{16,100}$/.test(c) && !c.startsWith('GPTP1-');
+async function polar(action, body) {
+  const host = ONLINE.sandbox ? 'https://sandbox-api.polar.sh' : 'https://api.polar.sh';
+  const r = await fetch(`${host}/v1/customer-portal/license-keys/${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'Polar-Version': '2026-10' },
+    body: JSON.stringify({ ...body, organization_id: ONLINE.organizationId }), signal: AbortSignal.timeout(15000)
+  });
+  const j = r.status === 204 ? {} : await r.json().catch(() => ({}));
+  return { status: r.status, ok: r.ok, j };
+}
+const keyBad = (k) => !k || ['revoked', 'disabled'].includes(k.status) || (k.expires_at && Date.parse(k.expires_at) < Date.now());
+function onlineValid(o) {
+  return !!(o && o.ok && Date.now() - (o.checkedAt || 0) < ONLINE_GRACE && (!o.expires || o.expires > Date.now()));
+}
+async function activateOnline(key) {
+  if (!ONLINE.organizationId) return { ok: false, error: 'Online-Keys sind noch nicht eingerichtet.' };
+  const old = settings.online;
+  if (old && decSecret(old.key) === key && onlineValid(old)) return { ok: true };
+  const label = 'GPTProp-' + require('crypto').randomBytes(4).toString('hex'); // bewusst ohne PC- oder Benutzernamen
+  let r;
+  try { r = await polar('activate', { key, label }); }
+  catch { return { ok: false, error: 'Keine Verbindung – bitte Internet prüfen und erneut versuchen.' }; }
+  if (r.status === 403) return { ok: false, error: 'Dieser Key ist schon auf einem anderen Gerät aktiv oder nicht mehr gültig. Entferne ihn dort zuerst („Code entfernen“).' };
+  if (r.status === 404 || r.status === 422) return { ok: false, error: 'Diesen Key gibt es nicht. Bitte genau kopieren.' };
+  if (!r.ok || !r.j.id) return { ok: false, error: 'Aktivierung fehlgeschlagen (Fehler ' + r.status + '). Bitte später erneut versuchen.' };
+  const k = r.j.license_key || {};
+  if (keyBad(k)) return { ok: false, error: 'Dieser Key ist nicht mehr gültig.' };
+  if (old && old.activationId) { try { await polar('deactivate', { key: decSecret(old.key), activation_id: old.activationId }); } catch { /* alter Platz bleibt belegt */ } }
+  settings.online = { key: encSecret(key), activationId: r.j.id, ok: true, expires: k.expires_at ? Date.parse(k.expires_at) : 0, checkedAt: Date.now(), reason: '' };
+  delete settings.license;
+  saveSettings();
+  log('Plus online aktiviert');
+  return { ok: true };
+}
+async function revalidateOnline() {
+  const o = settings.online;
+  if (!o || !ONLINE.organizationId) return;
+  try {
+    const r = await polar('validate', { key: decSecret(o.key), activation_id: o.activationId });
+    if (settings.online !== o) return;
+    if (r.ok && !keyBad(r.j)) Object.assign(o, { ok: true, checkedAt: Date.now(), expires: r.j.expires_at ? Date.parse(r.j.expires_at) : 0, reason: '' });
+    else if (r.ok || r.status === 404) Object.assign(o, { ok: false, reason: 'Dein Abo ist beendet oder der Key wurde auf diesem Gerät entfernt.' });
+    else return; // Serverproblem: Schonfrist läuft weiter
+    saveSettings();
+    try { win.webContents.send('plan-changed'); } catch { /* egal */ }
+  } catch { /* offline */ }
+}
+async function removeOnline() {
+  const o = settings.online;
+  if (!o) return '';
+  try {
+    const r = await polar('deactivate', { key: decSecret(o.key), activation_id: o.activationId });
+    if (!r.ok && r.status !== 404) return 'Der Key konnte gerade nicht freigegeben werden. Bitte später erneut versuchen.';
+  } catch { return 'Keine Verbindung – der Key bleibt aktiv, damit der Geräteplatz nicht verloren geht.'; }
+  delete settings.online; saveSettings();
+  return '';
+}
+
+/* ---------- Aktivierungs-Link: gptprop://aktivieren?key=… ---------- */
+let pendingLink = '';
+function keyFromArgs(argv) {
+  const url = (argv || []).find((a) => typeof a === 'string' && a.toLowerCase().startsWith('gptprop://'));
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    if (u.hostname.toLowerCase() !== 'aktivieren') return '';
+    const k = (u.searchParams.get('key') || '').trim();
+    return /^[A-Za-z0-9_.-]{16,700}$/.test(k) ? k : '';
+  } catch { return ''; }
+}
+// Der Link aktiviert nichts von selbst: der Key wird nur eingetragen, der Nutzer bestätigt per Klick
+function offerKey(key) {
+  if (!key || !win || win.isDestroyed()) return;
+  show();
+  if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(() => win.webContents.send('plan-link', key), 600));
+  else win.webContents.send('plan-link', key);
+}
+
 function planInfo() {
   const lic = settings.license ? verifyLicense(settings.license) : null;
-  const plus = !!(lic && lic.ok && !lic.expired);
+  const o = settings.online;
+  const plus = !!(lic && lic.ok && !lic.expired) || onlineValid(o);
   const u = usageToday();
   return {
     plus, limits: FREE_LIMITS, usage: { req: u.req, img: u.img },
-    license: lic && lic.ok ? { id: lic.id, name: lic.name, exp: lic.exp, expired: lic.expired } : null,
-    price: PLUS_CFG.priceLabel || '2,99 € / Monat', buyUrl: PLUS_CFG.buyUrl || ''
+    license: o ? { online: true, name: '', exp: o.expires || 0, expired: !onlineValid(o), reason: o.reason || (onlineValid(o) ? '' : 'Plus konnte seit über 7 Tagen nicht online geprüft werden.') }
+      : lic && lic.ok ? { id: lic.id, name: lic.name, exp: lic.exp, expired: lic.expired } : null,
+    price: PLUS_CFG.priceLabel || '3,99 € / Monat', buyUrl: PLUS_CFG.buyUrl || ''
   };
 }
 ipcMain.handle('plan:get', () => planInfo());
@@ -754,15 +838,18 @@ ipcMain.handle('plan:consume', (e, want = {}) => {
   u.req += req; u.img += img; saveSettings();
   return { ok: true, info: planInfo() };
 });
-ipcMain.handle('plan:activate', (e, code) => {
-  const r = verifyLicense(code);
+ipcMain.handle('plan:activate', async (e, code) => {
+  const clean = String(code || '').replace(/\s+/g, '');
+  if (isOnlineKey(clean)) { const x = await activateOnline(clean); return { ...x, info: planInfo() }; }
+  const r = verifyLicense(clean);
   if (!r.ok) return { ok: false, error: r.error, info: planInfo() };
   if (r.expired) return { ok: false, error: `Dieser Code ist am ${new Date(r.exp).toLocaleDateString('de-DE')} abgelaufen.`, info: planInfo() };
+  if (settings.online) await removeOnline();
   settings.license = r.code; saveSettings();
   log('Plus aktiviert, Code-ID', r.id);
   return { ok: true, info: planInfo() };
 });
-ipcMain.handle('plan:remove', () => { delete settings.license; saveSettings(); return planInfo(); });
+ipcMain.handle('plan:remove', async () => { const removeError = await removeOnline(); delete settings.license; saveSettings(); return { ...planInfo(), removeError }; });
 ipcMain.handle('plan:buy', () => {
   if (!PLUS_CFG.buyUrl) return { ok: false };
   shell.openExternal(PLUS_CFG.buyUrl).catch(() => {});
@@ -1007,7 +1094,7 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.setAppUserModelId('de.gptprop.app');
-  app.on('second-instance', show);
+  app.on('second-instance', (e, argv) => { const k = keyFromArgs(argv); if (k) offerKey(k); else show(); });
   app.whenReady().then(() => {
     loadSettings();
     ensureUia();
@@ -1021,6 +1108,10 @@ else {
     createTray();
     registerHotkeys();
     initUpdater();
+    if (app.isPackaged && !process.env.PORTABLE_EXECUTABLE_FILE) app.setAsDefaultProtocolClient('gptprop');
+    offerKey(keyFromArgs(process.argv));
+    revalidateOnline();
+    setInterval(revalidateOnline, 6 * 3600e3);
     // Modellliste vorab laden, damit die erste Nachricht nicht warten muss
     const k = getKey();
     if (k) fetchModels(k).catch((e) => log('Vorab-Laden der Modelle fehlgeschlagen:', e.message));

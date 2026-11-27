@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('api', {
   onOpenSettings: (cb) => ipcRenderer.on('open-settings', () => cb()),
   transcribe: (b64) => ipcRenderer.invoke('voice:transcribe', b64),
   onVoiceWake: (cb) => ipcRenderer.on('voice-wake', () => cb()),
+  onPlanLink: (cb) => ipcRenderer.on('plan-link', (e, key) => cb(String(key || ''))),
+  onPlanChanged: (cb) => ipcRenderer.on('plan-changed', () => cb()),
   planGet: () => ipcRenderer.invoke('plan:get'),
   planConsume: (want) => ipcRenderer.invoke('plan:consume', want),
   planActivate: (code) => ipcRenderer.invoke('plan:activate', code),
