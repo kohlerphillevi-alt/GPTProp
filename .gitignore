@@ -11,3 +11,6 @@ Thumbs.db
 # Niemals Schlüssel/Einstellungen einchecken
 settings.json
 .env
+*.pem
+GPTProp-Lizenz-PRIVAT/
+ausgegebene-codes.csv

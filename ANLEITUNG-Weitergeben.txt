@@ -38,6 +38,11 @@ WAS GPTPROP KANN
 - Fenster schließen = läuft im Infobereich neben der Uhr weiter
   (Beenden: Rechtsklick auf das Symbol -> Beenden)
 
+GRATIS & PLUS
+-------------
+Gratis: 50 KI-Anfragen und 5 Bilder pro Tag. Plus-Code eingeben unter
+Einstellungen -> GPTProp Plus.
+
 WICHTIG
 -------
 GPTProp führt Befehle standardmäßig ohne Nachfrage aus. Wer lieber vorher

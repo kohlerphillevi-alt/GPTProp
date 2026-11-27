@@ -30,6 +30,17 @@ Unter **[Releases](../../releases/latest)** gibt es zwei Varianten:
 - **Listen & Erinnerungen**, läuft im Infobereich weiter.
 - **Offline-Modus** ohne Key (Apps öffnen, Listen, Erinnerungen).
 
+## ✦ Gratis & Plus
+
+| | Gratis | Plus (2,99 € / Monat) |
+|---|---|---|
+| KI-Anfragen | 50 pro Tag | unbegrenzt* |
+| Bilder | 5 pro Tag | unbegrenzt* |
+
+Plus wird mit einem Code unter *Einstellungen → GPTProp Plus* freigeschaltet. Der Online-Kauf ist noch nicht verfügbar.
+
+\* Gilt für die Limits von GPTProp. Die Grenzen von Google für deinen eigenen Gemini-Key bleiben bestehen.
+
 ## 🚀 Einrichtung
 
 1. Kostenlosen Gemini-Key holen: <https://aistudio.google.com/apikey>

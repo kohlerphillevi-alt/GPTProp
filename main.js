@@ -669,6 +669,68 @@ function create() {
 
 function openSettings() { show(); win.webContents.send('open-settings'); }
 
+/* ======================= GPTProp Plus (Lizenz & Tageslimits) ======================= */
+// Plus-Codes sind mit Ed25519 signiert. Nur der Besitzer des privaten Schlüssels kann gültige Codes erzeugen.
+const LICENSE_PUBKEY = '-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEADUIWVxY2Yna2NuUwgdSvo8ZNhQb2WCdZmgVJzThmLn8=\n-----END PUBLIC KEY-----\n';
+const PLUS_CFG = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'plus-config.json'), 'utf8')); } catch { return {}; } })();
+const FREE_LIMITS = { req: Number(PLUS_CFG.freeRequestsPerDay) || 50, img: Number(PLUS_CFG.freeImagesPerDay) || 5 };
+const fromB64u = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+function verifyLicense(raw) {
+  const code = String(raw || '').replace(/\s+/g, '');
+  const m = code.match(/^GPTP1-([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/);
+  if (!m) return { ok: false, error: 'Das ist kein gültiger GPTProp-Plus-Code.' };
+  let ok = false;
+  try { ok = require('crypto').verify(null, Buffer.from(m[1]), LICENSE_PUBKEY, fromB64u(m[2])); } catch { ok = false; }
+  if (!ok) return { ok: false, error: 'Der Code ist ungültig (Signatur stimmt nicht).' };
+  let p;
+  try { p = JSON.parse(fromB64u(m[1]).toString('utf8')); } catch { return { ok: false, error: 'Der Code ist beschädigt.' }; }
+  if (p.v !== 1 || p.p !== 'plus') return { ok: false, error: 'Unbekannter Code-Typ.' };
+  const exp = Number(p.exp) || 0;
+  return { ok: true, id: String(p.id || ''), name: String(p.n || ''), exp, expired: !!exp && exp < Date.now(), code };
+}
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+function usageToday() {
+  if (!settings.usage || settings.usage.day !== today()) settings.usage = { day: today(), req: 0, img: 0 };
+  return settings.usage;
+}
+function planInfo() {
+  const lic = settings.license ? verifyLicense(settings.license) : null;
+  const plus = !!(lic && lic.ok && !lic.expired);
+  const u = usageToday();
+  return {
+    plus, limits: FREE_LIMITS, usage: { req: u.req, img: u.img },
+    license: lic && lic.ok ? { id: lic.id, name: lic.name, exp: lic.exp, expired: lic.expired } : null,
+    price: PLUS_CFG.priceLabel || '2,99 € / Monat', buyUrl: PLUS_CFG.buyUrl || ''
+  };
+}
+ipcMain.handle('plan:get', () => planInfo());
+// Vor jeder KI-Anfrage: prüfen & zählen (Plus = unbegrenzt)
+ipcMain.handle('plan:consume', (e, want = {}) => {
+  const req = Math.max(0, Math.min(10, Number(want.req) || 0));
+  const img = Math.max(0, Math.min(10, Number(want.img) || 0));
+  const info = planInfo();
+  if (info.plus) return { ok: true, info };
+  const u = usageToday();
+  if (u.req + req > FREE_LIMITS.req) return { ok: false, reason: 'req', info };
+  if (u.img + img > FREE_LIMITS.img) return { ok: false, reason: 'img', info };
+  u.req += req; u.img += img; saveSettings();
+  return { ok: true, info: planInfo() };
+});
+ipcMain.handle('plan:activate', (e, code) => {
+  const r = verifyLicense(code);
+  if (!r.ok) return { ok: false, error: r.error, info: planInfo() };
+  if (r.expired) return { ok: false, error: `Dieser Code ist am ${new Date(r.exp).toLocaleDateString('de-DE')} abgelaufen.`, info: planInfo() };
+  settings.license = r.code; saveSettings();
+  log('Plus aktiviert, Code-ID', r.id);
+  return { ok: true, info: planInfo() };
+});
+ipcMain.handle('plan:remove', () => { delete settings.license; saveSettings(); return planInfo(); });
+ipcMain.handle('plan:buy', () => {
+  if (!PLUS_CFG.buyUrl) return { ok: false };
+  shell.openExternal(PLUS_CFG.buyUrl).catch(() => {});
+  return { ok: true };
+});
+
 /* ======================= Chatverlauf (lokal gespeichert) ======================= */
 // Jeder Chat = eine JSON-Datei in %APPDATA%\gptprop\chats, dazu ein Index für die Seitenleiste
 const CHAT_DIR = () => path.join(app.getPath('userData'), 'chats');
