@@ -22,6 +22,8 @@ Unter **[Releases](../../releases/latest)** gibt es zwei Varianten:
 - **Jede App bedienen:** Über Windows UI Automation liest GPTProp Knöpfe & Felder von Fenstern und kann klicken und tippen – z. B. *„Starte Minecraft im NoRisk Launcher“*.
 - **Spotify:** Play/Pause/Weiter/Zurück/Lautstärke/„Was läuft?“ sofort; Songs per Name abspielen mit optionalem kostenlosem Spotify-Developer-Zugang.
 - **Sprachsteuerung „Hey Prop“:** Aktivierungswort wird offline von Windows erkannt, der Befehl per Gemini transkribiert, Antworten werden vorgelesen (Stimme & Tempo einstellbar).
+- **Chatverlauf:** Alle Chats bleiben gespeichert – Seitenleiste mit Suche, Umbenennen und Löschen; der letzte Chat öffnet sich beim Start.
+- **„Aurora Glass“-Design** mit 4 Themes (Aurora, Ocean, Sunset, Matrix).
 - **Bilder:** per Strg+V, Drag & Drop oder Büroklammer anhängen und dazu fragen.
 - **Tastenkürzel frei belegbar:** Öffnen (Standard Strg+Leertaste) und Spracheingabe (Strg+Umschalt+Leertaste).
 - **Automatische Updates** über GitHub-Releases (installierte Version).

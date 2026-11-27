@@ -32,6 +32,34 @@ a{color:#b9a8ff}
 .iconbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted);transition:background .15s,color .15s}
 .iconbtn:hover{background:rgba(255,255,255,.06);color:var(--text)}
 
+/* Layout mit Chat-Seitenleiste */
+.app{flex:1;display:flex;min-height:0;position:relative;z-index:1}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0}
+.side{width:0;flex:none;overflow:hidden;display:flex;flex-direction:column;gap:8px;background:rgba(10,9,18,.55);border-right:1px solid transparent;transition:width .22s cubic-bezier(.2,.8,.2,1),border-color .22s;padding:0}
+body.side-open .side{width:264px;border-right-color:var(--line);padding:10px 8px 8px}
+.side-new{display:flex;align-items:center;gap:8px;justify-content:center;font-weight:600;font-size:14px;padding:9px 12px;border-radius:12px;background:var(--accent-soft);border:1px solid rgba(139,108,255,.4);color:#e4ddff;white-space:nowrap;transition:background .15s}
+.side-new:hover{background:rgba(139,108,255,.25)}
+.side-search{display:flex;align-items:center;gap:7px;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted)}
+.side-search:focus-within{border-color:var(--accent)}
+.side-search input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font:inherit;font-size:13px;padding:7px 0}
+.side-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding-bottom:6px}
+.side-group{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#7a72a3;padding:12px 8px 4px}
+.side-item{display:flex;align-items:center;gap:2px;padding:7px 6px 7px 10px;border-radius:10px;cursor:pointer;color:#d8d2f3;font-size:13.5px;transition:background .12s}
+.side-item:hover{background:rgba(255,255,255,.05)}
+.side-item.on{background:rgba(139,108,255,.18);color:#fff}
+.side-item .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-item button{opacity:0;width:24px;height:24px;border-radius:7px;font-size:12px;color:var(--muted);flex:none;transition:opacity .12s,background .12s}
+.side-item:hover button,.side-item.on button{opacity:1}
+.side-item button:hover{background:rgba(255,255,255,.08);color:var(--text)}
+.side-item button[data-del]:hover{color:var(--err)}
+.side-rename{flex:1;min-width:0;background:var(--bg);border:1px solid var(--accent);border-radius:7px;color:var(--text);font:inherit;font-size:13px;padding:3px 6px;outline:none}
+.side-empty{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;line-height:1.5}
+.side-scrim{display:none}
+@media (max-width:819px){
+  .side{position:absolute;left:0;top:0;bottom:0;z-index:5;background:var(--panel);box-shadow:20px 0 50px rgba(0,0,0,.5)}
+  body.side-open .side-scrim{display:block;position:absolute;inset:0;z-index:4;background:rgba(5,4,12,.5)}
+}
+#sideBtn{-webkit-app-region:no-drag;margin-left:-6px}
 /* Verlauf */
 .scroller{flex:1;overflow-y:auto;position:relative;z-index:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .thread{max-width:800px;margin:0 auto;padding:24px 20px 12px;display:flex;flex-direction:column;gap:14px}
@@ -153,7 +181,7 @@ select:focus{border-color:var(--accent)}
 .row2{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .status{font-size:13px;margin-top:9px;min-height:18px;line-height:1.45;word-break:break-word}
 .status.ok{color:var(--ok)}.status.err{color:var(--err)}.status.info{color:var(--muted)}
-.toggle{display:flex;align-items:flex-start;gap:12px;padding:10px 0;cursor:pointer}
+.toggle{display:flex;align-items:flex-start;gap:12px;padding:10px 0}
 .toggle+.toggle{border-top:1px solid var(--line)}
 .toggle .t{flex:1}
 .toggle .t b{display:block;font-size:14px;font-weight:600}
@@ -179,11 +207,151 @@ select:focus{border-color:var(--accent)}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 @keyframes pulse{50%{opacity:.4}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* =====================================================================
+   AURORA GLASS – Theme-Schicht (überschreibt die Grundstile)
+   ===================================================================== */
+:root,[data-theme="aurora"]{--a1:#8b5cf6;--a2:#22d3ee;--a3:#f472b6;--glow:139,92,246}
+[data-theme="ocean"]{--a1:#3b82f6;--a2:#06b6d4;--a3:#34d399;--glow:59,130,246}
+[data-theme="sunset"]{--a1:#f97316;--a2:#f43f5e;--a3:#facc15;--glow:249,115,22}
+[data-theme="matrix"]{--a1:#22c55e;--a2:#14b8a6;--a3:#a3e635;--glow:34,197,94}
+:root{
+  --bg:#07060d;--accent:var(--a1);--accent-h:color-mix(in oklab,var(--a1) 85%,white);
+  --accent-soft:rgba(var(--glow),.14);
+  --grad:linear-gradient(135deg,var(--a1),var(--a3) 55%,var(--a2));
+  --grad-soft:linear-gradient(135deg,rgba(var(--glow),.22),transparent 70%);
+  --glass:rgba(255,255,255,.035);--glass2:rgba(255,255,255,.06);
+  --edge:rgba(255,255,255,.08);--edge2:rgba(255,255,255,.14);
+  --text:#f4f2ff;--muted:#a19cc0;--r:18px
+}
+::selection{background:rgba(var(--glow),.45);color:#fff}
+body{background:var(--bg);font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;letter-spacing:.003em}
+body::before{display:none}
+/* Aurora: weiche, langsam wandernde Farbschleier */
+.aurora{position:fixed;inset:-20%;z-index:0;pointer-events:none;overflow:hidden}
+.aurora i{position:absolute;width:60vmax;height:60vmax;border-radius:50%;opacity:.68;mix-blend-mode:screen;will-change:transform}
+.aurora i:nth-child(1){left:-10%;top:-15%;background:radial-gradient(circle,color-mix(in oklab,var(--a1) 70%,transparent),transparent 62%);animation:drift1 34s ease-in-out infinite alternate}
+.aurora i:nth-child(2){right:-15%;top:10%;background:radial-gradient(circle,color-mix(in oklab,var(--a2) 45%,transparent),transparent 60%);animation:drift2 41s ease-in-out infinite alternate;opacity:.5}
+.aurora i:nth-child(3){left:25%;bottom:-30%;background:radial-gradient(circle,color-mix(in oklab,var(--a3) 45%,transparent),transparent 60%);animation:drift3 47s ease-in-out infinite alternate;opacity:.42}
+.grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.9'/></svg>")}
+.vignette{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.55))}
+@keyframes drift1{to{transform:translate(18vw,12vh) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-20vw,18vh) scale(.9)}}
+@keyframes drift3{to{transform:translate(-12vw,-20vh) scale(1.2)}}
+
+/* Titelleiste */
+.titlebar{background:#0a0912;border-bottom:1px solid var(--edge);z-index:3}
+.brand{font-size:15.5px;font-weight:700;letter-spacing:-.015em}
+.logo{background:var(--grad);border-radius:11px;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 6px 22px -4px rgba(var(--glow),.75)}
+.pill{background:var(--glass);border-color:var(--edge);backdrop-filter:blur(12px)}
+.pill:hover{border-color:rgba(var(--glow),.6)}
+.dot{background:var(--a2);box-shadow:0 0 10px var(--a2)}
+.dot.busy{background:var(--a1);box-shadow:0 0 12px var(--a1)}
+.iconbtn{border-radius:11px}
+.iconbtn:hover{background:var(--glass2);color:#fff}
+
+/* Seitenleiste */
+.app{z-index:1}
+.side{background:rgba(12,10,22,.55);backdrop-filter:blur(22px) saturate(140%)}
+body.side-open .side{border-right-color:var(--edge)}
+.side-new{background:var(--grad);border:none;color:#fff;border-radius:13px;box-shadow:0 8px 24px -10px rgba(var(--glow),.9);text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.side-new:hover{filter:brightness(1.08);background:var(--grad)}
+.side-search{background:var(--glass);border-color:var(--edge);border-radius:12px}
+.side-group{color:color-mix(in oklab,var(--muted) 80%,var(--a1))}
+.side-item{border-radius:11px;position:relative}
+.side-item:hover{background:var(--glass2)}
+.side-item.on{background:linear-gradient(90deg,rgba(var(--glow),.22),rgba(var(--glow),.06))}
+.side-item.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--grad)}
+
+/* Nachrichten */
+.thread{gap:18px;padding-top:28px}
+.msg.user .bubble{background:var(--grad);border-radius:22px 22px 6px 22px;padding:11px 16px;font-weight:500;box-shadow:0 10px 30px -12px rgba(var(--glow),.85),0 0 0 1px rgba(255,255,255,.12) inset;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+.avatar{background:var(--grad);border:none;border-radius:11px;box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 6px 18px -6px rgba(var(--glow),.8)}
+.avatar svg{stroke:#fff}
+.msg.assistant .bubble{background:var(--glass);border:1px solid var(--edge);border-radius:6px 22px 22px 22px;backdrop-filter:blur(18px) saturate(140%);box-shadow:0 10px 30px -18px rgba(0,0,0,.9);padding:12px 16px}
+.bubble strong{color:#fff}
+.bubble a{color:color-mix(in oklab,var(--a2) 75%,white)}
+.bubble code{background:rgba(var(--glow),.14);color:#f1ecff}
+.bubble pre.code{background:rgba(3,3,8,.7);border-color:var(--edge)}
+.card{background:rgba(0,0,0,.25);border-left-color:var(--a2)}
+.tool{background:rgba(255,255,255,.025);border-color:var(--edge);border-radius:14px;backdrop-filter:blur(12px)}
+.tool summary .lbl b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.tool .st.ok{color:var(--a2)}
+.tool pre{background:rgba(3,3,8,.65);border-color:var(--edge)}
+.confirm{background:rgba(255,181,71,.06);backdrop-filter:blur(12px);border-radius:16px}
+.typing i{background:var(--grad)}
+.msg.user .imgs img{border-color:rgba(255,255,255,.2);box-shadow:0 10px 24px -12px rgba(0,0,0,.8)}
+
+/* Startseite */
+.welcome{padding-top:min(9vh,80px)}
+.welcome .big{position:relative;width:84px;height:84px;border-radius:50%;background:var(--grad);box-shadow:0 0 0 1px rgba(255,255,255,.2) inset,0 0 60px -6px rgba(var(--glow),.9),0 0 120px -20px var(--a2);margin-bottom:22px;animation:orb 6s ease-in-out infinite}
+.welcome .big::before{content:"";position:absolute;inset:-14px;border-radius:50%;background:conic-gradient(from 0deg,transparent,rgba(var(--glow),.55),transparent 40%,color-mix(in oklab,var(--a2) 60%,transparent),transparent 75%);filter:blur(10px);animation:spin 9s linear infinite;z-index:-1}
+.welcome .big svg{width:38px;height:38px}
+.welcome h2{font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-size:clamp(30px,4.4vw,44px);font-weight:700;letter-spacing:-.035em;line-height:1.08;background:linear-gradient(120deg,#fff 20%,color-mix(in oklab,var(--a1) 55%,white) 55%,color-mix(in oklab,var(--a2) 60%,white));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:10px}
+.welcome p{font-size:15.5px;color:#b9b3d6;max-width:500px}
+.sugg{gap:12px;margin-top:34px;max-width:660px}
+.sugg button{position:relative;display:flex;gap:12px;align-items:flex-start;background:var(--glass);border:1px solid var(--edge);border-radius:18px;padding:14px 16px;backdrop-filter:blur(16px);transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .2s,background .2s}
+.sugg button:hover{transform:translateY(-3px);border-color:rgba(var(--glow),.55);background:var(--glass2);box-shadow:0 16px 40px -18px rgba(var(--glow),.8)}
+.sugg .ic{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:18px;background:var(--grad-soft);border:1px solid var(--edge)}
+.sugg button{text-align:left}
+.sugg .tx{min-width:0;display:block}
+.sugg .tx b{font-size:14.5px;margin-bottom:3px;color:#fff}
+.keynote{background:rgba(255,181,71,.07);backdrop-filter:blur(12px);border-radius:16px}
+@keyframes orb{50%{transform:translateY(-6px) scale(1.03)}}
+
+/* Eingabe */
+.composer-wrap{padding:10px 22px 16px}
+.composer{border:1px solid transparent;border-radius:26px;background:linear-gradient(rgba(16,14,28,.82),rgba(16,14,28,.82)) padding-box,linear-gradient(135deg,var(--edge2),var(--edge)) border-box;backdrop-filter:blur(22px) saturate(150%);box-shadow:0 20px 60px -24px rgba(0,0,0,.95);padding:8px}
+.composer:focus-within{background:linear-gradient(rgba(16,14,28,.9),rgba(16,14,28,.9)) padding-box,var(--grad) border-box;box-shadow:0 0 0 4px rgba(var(--glow),.12),0 20px 60px -20px rgba(var(--glow),.5)}
+.composer textarea{font-size:15px}
+.send{width:40px;height:40px;border-radius:16px;background:var(--grad);box-shadow:0 8px 22px -8px rgba(var(--glow),.95),0 0 0 1px rgba(255,255,255,.18) inset;transition:transform .15s,box-shadow .2s,filter .15s}
+.send:hover{background:var(--grad);filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 12px 28px -8px rgba(var(--glow),1)}
+.send.stop{background:linear-gradient(135deg,#3a3260,#262042)}
+.mic{border-radius:14px}
+.mic:hover{background:var(--glass2)}
+.hintline{color:#6f6a90}
+.hintline kbd{border-color:var(--edge);background:var(--glass)}
+.listen{background:linear-gradient(90deg,rgba(var(--glow),.22),rgba(var(--glow),.05));border-color:rgba(var(--glow),.5);backdrop-filter:blur(16px);border-radius:18px}
+.bars i{background:var(--grad)}
+.thumb{border-color:var(--edge2);border-radius:14px}
+
+/* Einstellungen */
+.scrim{background:rgba(3,2,8,.6);backdrop-filter:blur(3px)}
+.drawer{background:rgba(13,11,24,.88);backdrop-filter:blur(28px) saturate(150%);border-left-color:var(--edge)}
+.drawer header{border-bottom-color:var(--edge)}
+.drawer header h3{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:17px}
+.sec{background:var(--glass);border:1px solid var(--edge);border-radius:18px;padding:14px 16px}
+.sec h4{color:color-mix(in oklab,var(--muted) 70%,var(--a1))}
+.field,select,.hk{background:rgba(3,3,8,.55);border-color:var(--edge)}
+.field:focus-within,select:focus{border-color:var(--a1)}
+.btn{border-color:var(--edge2);background:var(--glass);border-radius:11px}
+.btn:hover{background:var(--glass2)}
+.btn.primary{background:var(--grad);border-color:transparent;box-shadow:0 8px 20px -10px rgba(var(--glow),.9)}
+.btn.primary:hover{background:var(--grad);filter:brightness(1.08)}
+.switch input:checked+i{background:var(--grad)}
+.toggle+.toggle{border-top-color:var(--edge)}
+.status.ok{color:color-mix(in oklab,var(--a2) 70%,#4ade80)}
+/* Theme-Auswahl */
+.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.theme-sw{border-radius:14px;padding:8px 6px 7px;border:1px solid var(--edge);background:rgba(3,3,8,.4);font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,transform .15s}
+.theme-sw:hover{transform:translateY(-2px);border-color:var(--edge2)}
+.theme-sw.on{border-color:var(--a1);color:#fff;box-shadow:0 0 0 3px rgba(var(--glow),.18)}
+.theme-sw i{width:100%;height:30px;border-radius:9px;display:block}
+
+/* Scrollbalken */
+.scroller,.side-list,.drawer .body{scrollbar-color:rgba(255,255,255,.12) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:rgba(var(--glow),.45)}
+::-webkit-scrollbar-track{background:transparent}
+@media (prefers-reduced-motion:reduce){.aurora i,.welcome .big,.welcome .big::before{animation:none!important}}
+
 @media (max-width:560px){.sugg{grid-template-columns:1fr}.thread{padding:16px 12px}.composer-wrap{padding:6px 10px 10px}.hintline{display:none}.pill{display:none}}
 </style>
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div><div class="grain" aria-hidden="true"></div><div class="vignette" aria-hidden="true"></div>
 <header class="titlebar">
+  <button class="iconbtn" id="sideBtn" title="Chatverlauf ein-/ausblenden" aria-label="Chatverlauf"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
   <div class="brand"><span class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-5 1-8 4-9 1 4-1 7-4 9zM12 12c4 3 4 6 2 9-4-1-5-5-2-9zM12 12c-5-1-8 0-9 3 3 2 7 1 9-3z"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></span>GPTProp</div>
   <button class="pill" id="statusPill" title="Einstellungen öffnen"><i class="dot off" id="statusDot"></i><span id="statusText">Lädt…</span></button>
   <div class="spacer"></div>
@@ -192,6 +360,14 @@ select:focus{border-color:var(--accent)}
   <button class="iconbtn" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 
+<div class="app">
+<aside class="side" id="side" aria-label="Chatverlauf">
+  <button class="side-new" id="sideNew"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Neuer Chat</button>
+  <div class="side-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="chatSearch" placeholder="Chats durchsuchen" autocomplete="off" spellcheck="false"></div>
+  <div class="side-list" id="chatList"></div>
+</aside>
+<div class="side-scrim" id="sideScrim"></div>
+<div class="pane">
 <main class="scroller" id="scroller">
   <div class="thread" id="chatMessages"></div>
 </main>
@@ -208,6 +384,8 @@ select:focus{border-color:var(--accent)}
   </div>
   <div class="hintline"><kbd>Enter</kbd> senden · <kbd>Shift</kbd>+<kbd>Enter</kbd> neue Zeile · <span class="hkhint"></span><span id="wakeHint">„Hey Prop“ zum Sprechen</span></div>
 </footer>
+</div>
+</div>
 
 <div class="dropzone" id="dropzone">🖼️ Bild hier loslassen</div>
 <div class="lightbox" id="lightbox"><img alt=""></div>
@@ -241,9 +419,18 @@ select:focus{border-color:var(--accent)}
       <div class="status info" id="spStatus"></div>
     </section>
     <section class="sec">
+      <h4>Design</h4>
+      <div class="themes" id="themes">
+        <button class="theme-sw" data-theme-pick="aurora"><i style="background:linear-gradient(135deg,#8b5cf6,#f472b6,#22d3ee)"></i>Aurora</button>
+        <button class="theme-sw" data-theme-pick="ocean"><i style="background:linear-gradient(135deg,#3b82f6,#34d399,#06b6d4)"></i>Ocean</button>
+        <button class="theme-sw" data-theme-pick="sunset"><i style="background:linear-gradient(135deg,#f97316,#facc15,#f43f5e)"></i>Sunset</button>
+        <button class="theme-sw" data-theme-pick="matrix"><i style="background:linear-gradient(135deg,#22c55e,#a3e635,#14b8a6)"></i>Matrix</button>
+      </div>
+    </section>
+    <section class="sec">
       <h4>Sprachsteuerung</h4>
-      <label class="toggle"><span class="t"><b>„Hey Prop“ aktivieren</b><span>Lauscht offline auf das Aktivierungswort. Erst danach wird dein Befehl aufgenommen und von Gemini in Text umgewandelt.</span></span><span class="switch"><input type="checkbox" id="voiceToggle"><i></i></span></label>
-      <label class="toggle"><span class="t"><b>Antworten vorlesen</b><span>Bei Sprachbefehlen liest GPTProp die Antwort laut vor.</span></span><span class="switch"><input type="checkbox" id="voiceSpeakToggle"><i></i></span></label>
+      <div class="toggle"><span class="t"><b>„Hey Prop“ aktivieren</b><span>Lauscht offline auf das Aktivierungswort. Erst danach wird dein Befehl aufgenommen und von Gemini in Text umgewandelt.</span></span><span class="switch"><input type="checkbox" id="voiceToggle"><i></i></span></div>
+      <div class="toggle"><span class="t"><b>Antworten vorlesen</b><span>Bei Sprachbefehlen liest GPTProp die Antwort laut vor.</span></span><span class="switch"><input type="checkbox" id="voiceSpeakToggle"><i></i></span></div>
       <div style="margin-top:8px;display:flex;gap:8px"><select id="ttsVoice" style="flex:1"></select><button class="btn" id="ttsTest">▶ Probe</button></div>
       <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted)">Tempo <input type="range" id="ttsRate" min="0.8" max="1.8" step="0.05" style="flex:1;accent-color:var(--accent)"><span id="ttsRateVal" style="width:42px;text-align:right;color:var(--text)"></span></label>
       <div style="margin-top:8px"><select id="voiceSens"><option value="low">Empfindlichkeit: niedrig (weniger Fehlalarme)</option><option value="normal">Empfindlichkeit: normal</option><option value="high">Empfindlichkeit: hoch (reagiert leichter)</option></select></div>
@@ -258,18 +445,18 @@ select:focus{border-color:var(--accent)}
     </section>
     <section class="sec">
       <h4>PC-Zugriff &amp; Allgemein</h4>
-      <label class="toggle"><span class="t"><b>Aktionen bestätigen</b><span>Aus = GPTProp führt alles sofort aus. An = vor PowerShell-Befehlen, dem Schreiben und Löschen von Dateien nachfragen.</span></span><span class="switch"><input type="checkbox" id="confirmToggle"><i></i></span></label>
-      <label class="toggle"><span class="t"><b>Mit Windows starten</b><span>GPTProp startet im Hintergrund, damit Erinnerungen ankommen.</span></span><span class="switch"><input type="checkbox" id="autostartToggle"><i></i></span></label>
+      <div class="toggle"><span class="t"><b>Aktionen bestätigen</b><span>Aus = GPTProp führt alles sofort aus. An = vor PowerShell-Befehlen, dem Schreiben und Löschen von Dateien nachfragen.</span></span><span class="switch"><input type="checkbox" id="confirmToggle"><i></i></span></div>
+      <div class="toggle"><span class="t"><b>Mit Windows starten</b><span>GPTProp startet im Hintergrund, damit Erinnerungen ankommen.</span></span><span class="switch"><input type="checkbox" id="autostartToggle"><i></i></span></div>
     </section>
     <section class="sec">
       <h4>Updates</h4>
-      <label class="toggle"><span class="t"><b>Automatisch aktualisieren</b><span>Sucht beim Start und alle 4 Stunden auf GitHub nach neuen Versionen und lädt sie im Hintergrund.</span></span><span class="switch"><input type="checkbox" id="autoUpdToggle"><i></i></span></label>
+      <div class="toggle"><span class="t"><b>Automatisch aktualisieren</b><span>Sucht beim Start und alle 4 Stunden auf GitHub nach neuen Versionen und lädt sie im Hintergrund.</span></span><span class="switch"><input type="checkbox" id="autoUpdToggle"><i></i></span></div>
       <div class="row2" style="margin-top:4px"><button class="btn" id="updCheckBtn">Jetzt nach Updates suchen</button><button class="btn warn" id="updInstallBtn" hidden>Neu starten &amp; aktualisieren</button></div>
       <div class="status info" id="updStatus"></div>
     </section>
     <section class="sec">
       <h4>Daten</h4>
-      <div class="row2" style="margin-top:0"><button class="btn" id="clearChatBtn">Chat leeren</button><button class="btn" id="clearDataBtn">Listen &amp; Erinnerungen löschen</button><button class="btn" id="openLogBtn">Diagnose-Protokoll öffnen</button></div>
+      <div class="row2" style="margin-top:0"><button class="btn" id="clearChatBtn">Alle Chats löschen</button><button class="btn" id="clearDataBtn">Listen &amp; Erinnerungen löschen</button><button class="btn" id="openLogBtn">Diagnose-Protokoll öffnen</button></div>
       <div class="status info" id="dataStatus"></div>
     </section>
     <div class="ver" id="verText"></div>
@@ -277,6 +464,17 @@ select:focus{border-color:var(--accent)}
 </aside>
 
 <script>
+/* ================= Theme ================= */
+const THEMES=['aurora','ocean','sunset','matrix'];
+function applyTheme(t){
+  if(!THEMES.includes(t))t='aurora';
+  document.documentElement.dataset.theme=t;
+  document.querySelectorAll('[data-theme-pick]').forEach(b=>b.classList.toggle('on',b.dataset.themePick===t));
+  try{localStorage.setItem('gp:theme',t);}catch(e){}
+}
+try{applyTheme(localStorage.getItem('gp:theme')||'aurora');}catch(e){applyTheme('aurora');}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-pick]');if(b)applyTheme(b.dataset.themePick);});
+
 /* ================= Grundlagen ================= */
 const $=id=>document.getElementById(id);
 const chatMessages=$('chatMessages'),scroller=$('scroller'),userInput=$('userInput'),sendBtn=$('sendBtn');
@@ -284,7 +482,7 @@ const chatMessages=$('chatMessages'),scroller=$('scroller'),userInput=$('userInp
 const KEY='gpterik:v1';
 let state={lists:{},reminders:[]};
 const timers={};
-let S={hasKey:false,model:'auto',confirmActions:true,env:{}};
+let S={hasKey:false,model:'auto',confirmActions:false,env:{}};
 let busy=false,runId=0,currentStart=0,sessionAllow=false;
 let convo=[];
 
@@ -332,6 +530,8 @@ function addMessage(html,sender,extra=''){
   if(sender==='user')d.innerHTML=`<div class="bubble">${html}</div>`;
   else d.innerHTML=AVATAR+`<div class="bubble">${html}${extra}</div>`;
   append(d);if(sender==='user')scrollDown(true);
+  if(restoring)return d;
+  logItem(sender==='user'?{k:'uh',html}:{k:'a',html:html+extra});
   if(sender==='assistant'&&voiceTurn&&S.voiceSpeak!==false)speak(d.querySelector('.bubble').innerText);
   return d;
 }
@@ -507,6 +707,8 @@ Regeln:
 - Keine interaktiven Befehle (Read-Host, pause, Editor-Prompts). Lange Ausgaben begrenzen (Select-Object -First, Format-Table -AutoSize | Out-String -Width 200).
 - Frag NICHT nach Erlaubnis und bitte nicht um Bestätigung: Was der Nutzer verlangt, führst du sofort aus – auch Öffnen, Schließen, Herunterfahren, Neustarten, Abmelden, Installieren oder Löschen. Sag danach kurz, was du getan hast.
 - Herunterfahren: run_command "shutdown /s /t 5", Neustart: "shutdown /r /t 5", Abmelden: "shutdown /l", Energiesparen: "rundll32.exe powrprof.dll,SetSuspendState 0,1,0". Abbrechen: "shutdown /a".
+- Schreib NUR die Antwort an den Nutzer – niemals deine Überlegungen, Analysen, Pläne oder Zitate aus diesen Anweisungen (kein "The user is asking…", kein "According to…"). Immer auf Deutsch.
+- Führe nur Befehle aus, die wirklich etwas für die Aufgabe tun – niemals Platzhalter wie "echo …", um so zu tun als ob. Wenn du etwas nicht kannst (z. B. GPTProp selbst umprogrammieren oder neue Funktionen einbauen), sag das ehrlich in einem Satz.
 - Nur wenn eine Anfrage wirklich unklar ist (z. B. welche Datei gemeint ist), kurz nachfragen. Lösche bevorzugt mit delete_item (Papierkorb).
 - Schlägt etwas fehl, analysiere den Fehler und versuche einen anderen Weg. Erfinde keine Ergebnisse.
 - Musik: Für Songs/Alben/Künstler/Playlists immer spotify_play nutzen (nicht open_item). Pause, weiter, lauter usw.: spotify_control.
@@ -557,9 +759,12 @@ function toolView(name,a){
   const d=document.createElement('details');d.className='tool';
   d.innerHTML=`<summary><span class="st run"></span><span class="lbl"><b>${esc(LABELS[name]||name)}</b> ${toolSummary(name,a)}</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></summary><div class="k">Eingabe</div><pre></pre>`;
   d.querySelector('pre').textContent=name==='run_command'?String(a.command||''):JSON.stringify(a,null,2);
-  append(d);return d;
+  append(d);
+  if(!restoring){d._item={k:'t',name,args:a};logItem(d._item);}
+  return d;
 }
 function toolDone(d,res){
+  if(d._item){let r=res;try{const s=JSON.stringify(res);if(s.length>6000)r={gekürzt:s.slice(0,6000)+'…'};}catch(e){}d._item.res=r;scheduleSave();}
   const err=!!(res&&(res.error||(res.exit_code!=null&&res.exit_code!==0)||res.timed_out||res.declined));
   const st=d.querySelector('.st');st.className='st '+(err?'err':'ok');st.textContent=err?'✕':'✓';
   const k=document.createElement('div');k.className='k';k.textContent='Ergebnis';
@@ -601,6 +806,23 @@ async function execTool(name,a,myRun){
   return res;
 }
 
+// Manche Modelle schreiben ihre Überlegungen als normalen Text ("The user is asking … According to system instructions …").
+// Solche Denk-Absätze entfernen, die eigentliche Antwort behalten.
+const REASONING=/^\s*(\*\*)?(the user|user is|user asks|user wants|according to|based on the (system|instructions)|i (should|need to|will|must|think|can)|let me|let's|okay,? (so|the|i)|so,? the user|now,? i|first,? i|my (task|response)|thinking|plan:|reasoning|analysis:|der nutzer (fragt|möchte|will)|laut (den )?(system)?anweisungen)/i;
+const META=/system[- ]?(instructions|prompt|anweisung)|spoken response rules|antworte in höchstens|dieser befehl kam per sprache/i;
+function cleanReply(chunks){
+  let parts=(chunks||[]).map(s=>String(s||'')).filter(s=>s.trim());
+  // Mehrere Textteile: reine Denk-Teile verwerfen
+  if(parts.length>1){const keep=parts.filter(p=>!(REASONING.test(p)||META.test(p)));if(keep.length)parts=keep;}
+  let txt=parts.join('').trim();
+  if(!REASONING.test(txt)&&!META.test(txt))return txt;
+  // Absatzweise: führende Denk-/Meta-Absätze und Zitate aus den Anweisungen entfernen
+  const paras=txt.split(/\n\s*\n/);
+  const isThought=p=>REASONING.test(p)||META.test(p)||/^\s*[-*•]\s*["„“]/.test(p);
+  let i=0;while(i<paras.length-1&&isThought(paras[i]))i++;
+  const rest=paras.slice(i).filter(p=>!META.test(p));
+  return (rest.join('\n\n').trim())||paras[paras.length-1].trim();
+}
 function trimHistory(){
   // Nur die Bilder der letzten 2 Nachrichten mitschicken – ältere durch Platzhalter ersetzen (spart Zeit & Kontingent)
   let seen=0;
@@ -654,7 +876,7 @@ async function runAgent(text,images){
         return;
       }
       convo.push({role:'model',parts});
-      const txt=parts.filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text).join('').trim();
+      const txt=cleanReply(parts.filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text));
       if(txt)addMessage(md(txt),'assistant');
       const calls=parts.filter(p=>p.functionCall);
       if(!calls.length){if(!txt)reply('Erledigt.');return;}
@@ -675,7 +897,7 @@ async function runAgent(text,images){
     hideTyping();closeHistory(start);
     reply('Da ist etwas schiefgelaufen.',esc(String(e&&e.message||e)),'#f87171');
   }finally{
-    if(myRun===runId){setBusy(false);trimHistory();}
+    if(myRun===runId){setBusy(false);trimHistory();scheduleSave();}
   }
 }
 
@@ -693,6 +915,7 @@ function stopRun(){
   if(pendingConfirm)pendingConfirm();
   reply('Gestoppt.');
   setBusy(false);
+  scheduleSave();
 }
 function setModelLabel(m){$('statusText').textContent=m?`Gemini · ${m}`:'Gemini · automatisch';}
 function refreshStatus(){
@@ -705,20 +928,21 @@ function renderWelcome(){
   chatMessages.innerHTML='';
   const w=document.createElement('div');w.className='welcome';w.id='welcome';
   const sugg=S.hasKey?[
-    ['Speicherplatz prüfen','Wie viel ist auf meinen Laufwerken frei?'],
-    ['Desktop aufräumen','Was liegt auf meinem Desktop? Gib mir einen Überblick.'],
-    ['Musik','Spiel Blinding Lights auf Spotify'],
-    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche']
+    ['Speicherplatz prüfen','Wie viel ist auf meinen Laufwerken frei?','💾'],
+    ['Desktop aufräumen','Was liegt auf meinem Desktop? Gib mir einen Überblick.','🗂️'],
+    ['Musik','Spiel Blinding Lights auf Spotify','🎧'],
+    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche','⏰']
   ]:[
-    ['App starten','Öffne Spotify'],
-    ['Einkaufsliste','Setze Milch auf meine Einkaufsliste'],
-    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche'],
-    ['Listen ansehen','Zeige Einkaufsliste']
+    ['App starten','Öffne Spotify','🚀'],
+    ['Einkaufsliste','Setze Milch auf meine Einkaufsliste','🛒'],
+    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche','⏰'],
+    ['Listen ansehen','Zeige Einkaufsliste','📋']
   ];
+  const hr=new Date().getHours(),greet=hr<5?'Noch wach':hr<11?'Guten Morgen':hr<17?'Moin':hr<22?'Guten Abend':'Gute Nacht';
   w.innerHTML=`<div class="big"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-5 1-8 4-9 1 4-1 7-4 9zM12 12c4 3 4 6 2 9-4-1-5-5-2-9zM12 12c-5-1-8 0-9 3 3 2 7 1 9-3z"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></div>
-  <h2>Moin${S.env&&S.env.user?', '+esc(S.env.user):''}!</h2>
+  <h2>${greet}${S.env&&S.env.user?', '+esc(S.env.user):''}.</h2>
   <p>${S.hasKey?'Ich bin GPTProp – dein KI-Assistent mit Zugriff auf deinen PC. Sag mir einfach, was ich erledigen soll.':'Ich bin GPTProp. Ich kann Apps öffnen, Listen führen und dich erinnern.'}</p>
-  <div class="sugg">${sugg.map(([t,c])=>`<button data-prompt="${esc(c)}"><b>${esc(t)}</b><span>${esc(c)}</span></button>`).join('')}</div>
+  <div class="sugg">${sugg.map(([t,c,ic])=>`<button data-prompt="${esc(c)}"><span class="ic">${ic||'✨'}</span><span class="tx"><b>${esc(t)}</b><span>${esc(c)}</span></span></button>`).join('')}</div>
   ${S.hasKey?'':'<div class="keynote"><span>✨ Mit einem kostenlosen Gemini-Key kann ich frei antworten und deinen PC steuern.</span><button class="btn warn" data-open-settings>Key eintragen</button></div>'}`;
   chatMessages.appendChild(w);
 }
@@ -790,7 +1014,8 @@ function flashHint(t){const old=userInput.placeholder;userInput.placeholder=t;se
 function addUserWithImages(text,imgs){
   hideWelcome();
   const d=document.createElement('div');d.className='msg user';
-  d.innerHTML=`<div class="stack"><div class="imgs">${imgs.map(i=>`<img src="${i.url}" alt="Bild">`).join('')}</div><div class="bubble">${esc(text)}</div></div>`;
+  d.innerHTML=`<div class="stack"><div class="imgs">${imgs.map(i=>`<img src="${/^data:image\/(jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(i.url)?i.url:''}" alt="Bild">`).join('')}</div><div class="bubble">${esc(text)}</div></div>`;
+  if(!restoring)logItem({k:'u',text,imgs:imgs.map(i=>i.url)});
   append(d);scrollDown(true);
 }
 $('attachBtn').onclick=()=>$('fileInput').click();
@@ -860,10 +1085,122 @@ async function runMusic(act,q){
   reply(np&&act!=='volume_up'&&act!=='volume_down'?`${txt} <strong>${esc(np)}</strong>`:txt);
 }
 
-function newChat(){
-  if(busy)stopRun();
-  runId++;convo=[];sessionAllow=false;renderWelcome();userInput.focus();
+/* ================= Chatverlauf ================= */
+let chat=null,restoring=false,saveTimer=null,chatList=[];
+const newChatObj=()=>({id:(Date.now().toString(36)+Math.random().toString(36).slice(2,8)).replace(/[^a-z0-9]/g,''),title:'',created:Date.now(),updated:Date.now(),items:[],convo:[]});
+function makeTitle(t){t=String(t||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();return t.length>48?t.slice(0,46)+'…':(t||'Neuer Chat');}
+function logItem(it){
+  if(restoring)return;
+  if(!chat)chat=newChatObj();
+  chat.items.push(it);
+  if(!chat.title&&(it.k==='u'||it.k==='uh')){const tmp=document.createElement('div');tmp.innerHTML=it.k==='u'?esc(it.text):it.html;chat.title=makeTitle(tmp.textContent);}
+  scheduleSave();
 }
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveChat,400);}
+async function saveChat(){
+  clearTimeout(saveTimer);
+  if(!chat||!chat.items.length)return;
+  chat.convo=convo;chat.updated=Date.now();
+  if(!chat.title)chat.title='Neuer Chat';
+  try{const r=await api.chatSave(chat);if(r&&!r.ok)console.warn('Chat nicht gespeichert:',r.error);}catch(e){}
+  try{localStorage.setItem('gp:lastChat',chat.id);}catch(e){}
+  refreshChatList();
+}
+function renderItems(items){
+  restoring=true;
+  try{
+    chatMessages.innerHTML='';
+    for(const it of items||[]){
+      try{
+        if(it.k==='uh')addMessage(it.html,'user');
+        else if(it.k==='a')addMessage(it.html,'assistant');
+        else if(it.k==='u')addUserWithImages(it.text||'',(it.imgs||[]).map(url=>({url})));
+        else if(it.k==='t'){const d=toolView(it.name,it.args||{});if(it.res!==undefined)toolDone(d,it.res);else{const st=d.querySelector('.st');st.className='st err';st.textContent='–';}}
+      }catch(e){}
+    }
+  }finally{restoring=false;}
+  if(!chatMessages.children.length)renderWelcome();
+  scroller.scrollTop=scroller.scrollHeight;
+}
+async function openChat(id){
+  if(chat&&chat.id===id)return;
+  if(busy)stopRun();
+  await saveChat();
+  const c=await api.chatLoad(id);
+  if(!c){refreshChatList();return;}
+  runId++;sessionAllow=false;
+  chat={...c,items:Array.isArray(c.items)?c.items:[]};
+  convo=Array.isArray(c.convo)?c.convo:[];
+  renderItems(chat.items);
+  try{localStorage.setItem('gp:lastChat',chat.id);}catch(e){}
+  renderChatList();closeSideIfOverlay();userInput.focus();
+}
+async function newChat(){
+  if(busy)stopRun();
+  await saveChat();
+  runId++;convo=[];sessionAllow=false;chat=null;
+  try{localStorage.removeItem('gp:lastChat');}catch(e){}
+  renderWelcome();renderChatList();closeSideIfOverlay();userInput.focus();
+}
+async function refreshChatList(){try{chatList=await api.chatList()||[];}catch(e){chatList=[];}renderChatList();}
+function groupOf(ts){
+  const d=new Date(ts),now=new Date(),day=86400000;
+  const start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  if(ts>=start)return 'Heute';if(ts>=start-day)return 'Gestern';if(ts>=start-6*day)return 'Letzte 7 Tage';if(ts>=start-29*day)return 'Letzte 30 Tage';
+  return d.toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+}
+function renderChatList(){
+  const box=$('chatList');if(!box)return;
+  const q=($('chatSearch').value||'').toLowerCase().trim();
+  const list=chatList.filter(c=>!q||String(c.title).toLowerCase().includes(q));
+  if(!list.length){box.innerHTML=`<div class="side-empty">${q?'Nichts gefunden.':'Noch keine Chats.<br>Deine Unterhaltungen erscheinen hier.'}</div>`;return;}
+  let html='',last='';
+  for(const c of list){
+    const g=groupOf(c.updated);
+    if(g!==last){html+=`<div class="side-group">${esc(g)}</div>`;last=g;}
+    html+=`<div class="side-item${chat&&chat.id===c.id?' on':''}" data-chat="${esc(c.id)}" title="${esc(c.title)}"><span class="t">${esc(c.title)}</span><button data-ren="${esc(c.id)}" title="Umbenennen" aria-label="Umbenennen">✎</button><button data-del="${esc(c.id)}" title="Löschen" aria-label="Löschen">🗑</button></div>`;
+  }
+  box.innerHTML=html;
+}
+async function renameChat(id){
+  const c=chatList.find(x=>x.id===id);if(!c)return;
+  const row=document.querySelector(`.side-item[data-chat="${CSS.escape(id)}"] .t`);if(!row)return;
+  const inp=document.createElement('input');inp.className='side-rename';inp.value=c.title;inp.maxLength=120;
+  row.replaceWith(inp);inp.focus();inp.select();
+  let done=false;
+  const finish=async(ok)=>{if(done)return;done=true;const t=inp.value.trim();
+    if(ok&&t&&t!==c.title){await api.chatRename(id,t);if(chat&&chat.id===id)chat.title=t;}
+    refreshChatList();};
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')finish(true);if(e.key==='Escape')finish(false);});
+  inp.addEventListener('blur',()=>finish(true));
+  inp.addEventListener('click',e=>e.stopPropagation());
+}
+async function deleteChat(id){
+  const c=chatList.find(x=>x.id===id);
+  if(!confirm(`Chat „${c?c.title:''}“ endgültig löschen?`))return;
+  await api.chatDelete(id);
+  if(chat&&chat.id===id){chat=null;convo=[];runId++;renderWelcome();try{localStorage.removeItem('gp:lastChat');}catch(e){}}
+  refreshChatList();
+}
+/* Seitenleiste ein-/ausblenden */
+const isNarrow=()=>window.innerWidth<820;
+function setSide(open){
+  document.body.classList.toggle('side-open',open);
+  if(!isNarrow())try{localStorage.setItem('gp:side',open?'1':'0');}catch(e){}
+}
+function closeSideIfOverlay(){if(isNarrow())setSide(false);}
+$('sideBtn').onclick=()=>setSide(!document.body.classList.contains('side-open'));
+$('sideNew').onclick=()=>newChat();
+$('sideScrim').onclick=()=>setSide(false);
+$('chatSearch').addEventListener('input',renderChatList);
+$('chatList').addEventListener('click',e=>{
+  const r=e.target.closest('[data-ren]');if(r){e.stopPropagation();renameChat(r.dataset.ren);return;}
+  const d=e.target.closest('[data-del]');if(d){e.stopPropagation();deleteChat(d.dataset.del);return;}
+  const it=e.target.closest('[data-chat]');if(it)openChat(it.dataset.chat);
+});
+$('chatList').addEventListener('dblclick',e=>{const it=e.target.closest('[data-chat]');if(it&&!e.target.closest('button'))renameChat(it.dataset.chat);});
+window.addEventListener('resize',()=>{if(!isNarrow()){let v='1';try{v=localStorage.getItem('gp:side')??'1';}catch(e){}document.body.classList.toggle('side-open',v==='1');}});
+window.addEventListener('beforeunload',()=>{if(chat&&chat.items.length){chat.convo=convo;chat.updated=Date.now();api.chatSave(chat);}});
 
 /* ================= Einstellungen ================= */
 const drawer=$('drawer'),scrim=$('scrim');
@@ -935,7 +1272,7 @@ $('ttsVoice').onchange=async e=>{S=await api.setSettings({ttsVoice:e.target.valu
 $('ttsRate').oninput=e=>{$('ttsRateVal').textContent=(+e.target.value).toFixed(2)+'×';};
 $('ttsRate').onchange=async e=>{S=await api.setSettings({ttsRate:+e.target.value});speechSynthesis.cancel();speak('So schnell spreche ich jetzt.',true);};
 $('ttsTest').onclick=()=>{speechSynthesis.cancel();speak('Hallo! Ich bin GPTProp. Sag einfach Hey Prop, wenn du etwas brauchst.',true);};
-$('clearChatBtn').onclick=()=>{newChat();setStatus('dataStatus','ok','Chat geleert.');};
+$('clearChatBtn').onclick=async()=>{if(!confirm('Wirklich ALLE gespeicherten Chats endgültig löschen?'))return;if(busy)stopRun();await api.chatDelete('*');chat=null;convo=[];runId++;renderWelcome();try{localStorage.removeItem('gp:lastChat');}catch(e){}await refreshChatList();setStatus('dataStatus','ok','Alle Chats gelöscht.');};
 $('clearDataBtn').onclick=()=>{if(!confirm('Alle Listen und Erinnerungen löschen?'))return;clearAllReminders();state.lists={};save();setStatus('dataStatus','ok','Listen und Erinnerungen gelöscht.');};
 function refreshSpotifyUi(){
   $('spIdInput').placeholder=S.hasSpotify?`Gespeichert (${S.spotifyIdMasked}) – zum Ersetzen neu einfügen`:'Client ID';
@@ -1216,6 +1553,12 @@ if(api.onSettingsChanged)api.onSettingsChanged(async()=>{S=await api.getSettings
   if(S.voice)micOpen();
   refreshStatus();
   renderWelcome();
+  // Chatverlauf laden und den zuletzt offenen Chat wiederherstellen
+  let sideOpen='1';try{sideOpen=localStorage.getItem('gp:side')??'1';}catch(e){}
+  if(!isNarrow()&&sideOpen==='1')document.body.classList.add('side-open');
+  await refreshChatList();
+  let lastId=null;try{lastId=localStorage.getItem('gp:lastChat');}catch(e){}
+  if(lastId&&chatList.some(c=>c.id===lastId))await openChat(lastId);
   state.reminders.slice().forEach(schedule);
   userInput.focus();
 })();

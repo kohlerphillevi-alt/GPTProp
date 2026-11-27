@@ -27,6 +27,8 @@ WAS GPTPROP KANN
 - Spotify steuern: "pause", "nächstes Lied", "spiel ... auf Spotify"
 - Sprachsteuerung: "Hey Prop" sagen und dann den Befehl
   (Einstellungen -> Sprachsteuerung einschalten; Mikrofon nötig)
+- Chats bleiben gespeichert (Liste links, mit Suche)
+- 4 Farb-Themes (Einstellungen -> Design)
 - Bilder einfügen (Strg+V, hineinziehen oder Büroklammer) und dazu fragen
 - Listen und Erinnerungen
 - Strg+Leertaste holt GPTProp jederzeit nach vorn,

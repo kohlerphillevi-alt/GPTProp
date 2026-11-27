@@ -16,6 +16,8 @@ function loadSettings() {
   catch { settings = { ...DEFAULTS }; }
   // Einmalig: Nachfragen standardmäßig aus (kann in den Einstellungen wieder eingeschaltet werden)
   if (settings.noConfirmMigrated !== true) { settings.confirmActions = false; settings.noConfirmMigrated = true; saveSettings(); }
+  // 2.1: versehentlich wieder eingeschaltete Rückfragen einmalig zurücksetzen
+  if (settings.noConfirmMigrated2 !== true) { settings.confirmActions = false; settings.noConfirmMigrated2 = true; saveSettings(); }
   // Einmalig: Sprachsteuerung für bestehende Installationen einschalten (neue Installationen: aus)
   if (settings.voiceMigrated !== true) { if (settings.apiKeyEnc || settings.apiKeyPlain) settings.voice = true; settings.voiceMigrated = true; saveSettings(); }
 }
@@ -651,9 +653,9 @@ function show() {
 function create() {
   win = new BrowserWindow({
     width: 860, height: 900, minWidth: 420, minHeight: 520,
-    backgroundColor: '#0d0b17', title: 'GPTProp', show: false,
+    backgroundColor: '#07060d', title: 'GPTProp', show: false,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#0d0b17', symbolColor: '#c9c2ec', height: 52 },
+    titleBarOverlay: { color: '#0a0912', symbolColor: '#d6d0f5', height: 52 },
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
@@ -666,6 +668,77 @@ function create() {
 }
 
 function openSettings() { show(); win.webContents.send('open-settings'); }
+
+/* ======================= Chatverlauf (lokal gespeichert) ======================= */
+// Jeder Chat = eine JSON-Datei in %APPDATA%\gptprop\chats, dazu ein Index für die Seitenleiste
+const CHAT_DIR = () => path.join(app.getPath('userData'), 'chats');
+const CHAT_INDEX = () => path.join(CHAT_DIR(), 'index.json');
+const validChatId = (id) => typeof id === 'string' && /^[a-z0-9]{6,40}$/.test(id);
+let chatIndex = null;
+function writeAtomic(file, data) {
+  const tmp = file + '.tmp';
+  fs.writeFileSync(tmp, data, 'utf8');
+  fs.renameSync(tmp, file);
+}
+function loadChatIndex() {
+  if (chatIndex) return chatIndex;
+  try { fs.mkdirSync(CHAT_DIR(), { recursive: true }); } catch { /* egal */ }
+  try { chatIndex = JSON.parse(fs.readFileSync(CHAT_INDEX(), 'utf8')); if (!Array.isArray(chatIndex)) throw new Error('kaputt'); }
+  catch {
+    // Index fehlt/kaputt: aus den Chat-Dateien neu aufbauen
+    chatIndex = [];
+    try {
+      for (const f of fs.readdirSync(CHAT_DIR())) {
+        if (!/^[a-z0-9]{6,40}\.json$/.test(f)) continue;
+        try { const c = JSON.parse(fs.readFileSync(path.join(CHAT_DIR(), f), 'utf8')); chatIndex.push({ id: c.id, title: c.title || 'Chat', updated: c.updated || 0, created: c.created || 0 }); } catch { /* überspringen */ }
+      }
+    } catch { /* egal */ }
+    saveChatIndex();
+  }
+  return chatIndex;
+}
+function saveChatIndex() {
+  try { writeAtomic(CHAT_INDEX(), JSON.stringify(chatIndex || [])); } catch (e) { log('Chat-Index nicht gespeichert:', e.message); }
+}
+ipcMain.handle('chats:list', () => [...loadChatIndex()].sort((a, b) => b.updated - a.updated));
+ipcMain.handle('chats:load', (e, id) => {
+  if (!validChatId(id)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(CHAT_DIR(), id + '.json'), 'utf8')); } catch { return null; }
+});
+ipcMain.handle('chats:save', (e, chat) => {
+  if (!chat || !validChatId(chat.id) || !Array.isArray(chat.items)) return { ok: false, error: 'Ungültiger Chat.' };
+  const title = String(chat.title || 'Neuer Chat').slice(0, 120);
+  const data = JSON.stringify({ ...chat, title });
+  if (data.length > 60 * 1024 * 1024) return { ok: false, error: 'Chat zu groß.' };
+  try {
+    fs.mkdirSync(CHAT_DIR(), { recursive: true });
+    writeAtomic(path.join(CHAT_DIR(), chat.id + '.json'), data);
+    const idx = loadChatIndex();
+    const entry = { id: chat.id, title, updated: Number(chat.updated) || Date.now(), created: Number(chat.created) || Date.now() };
+    const i = idx.findIndex((x) => x.id === chat.id);
+    if (i >= 0) idx[i] = entry; else idx.push(entry);
+    saveChatIndex();
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('chats:rename', (e, id, title) => {
+  if (!validChatId(id)) return false;
+  title = String(title || '').trim().slice(0, 120) || 'Chat';
+  const f = path.join(CHAT_DIR(), id + '.json');
+  try { const c = JSON.parse(fs.readFileSync(f, 'utf8')); c.title = title; writeAtomic(f, JSON.stringify(c)); } catch { return false; }
+  const idx = loadChatIndex(); const it = idx.find((x) => x.id === id); if (it) it.title = title; saveChatIndex();
+  return true;
+});
+ipcMain.handle('chats:delete', (e, id) => {
+  if (id === '*') {
+    try { for (const f of fs.readdirSync(CHAT_DIR())) if (/\.json$/.test(f)) fs.unlinkSync(path.join(CHAT_DIR(), f)); } catch { /* egal */ }
+    chatIndex = []; saveChatIndex(); return true;
+  }
+  if (!validChatId(id)) return false;
+  try { fs.unlinkSync(path.join(CHAT_DIR(), id + '.json')); } catch { /* schon weg */ }
+  chatIndex = loadChatIndex().filter((x) => x.id !== id); saveChatIndex();
+  return true;
+});
 
 /* ======================= Automatische Updates (GitHub-Releases) ======================= */
 const REPO = { owner: 'kohlerphillevi-alt', repo: 'GPTProp' };
