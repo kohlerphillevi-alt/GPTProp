@@ -653,9 +653,9 @@ function show() {
 function create() {
   win = new BrowserWindow({
     width: 860, height: 900, minWidth: 420, minHeight: 520,
-    backgroundColor: '#07060d', title: 'GPTProp', show: false,
+    backgroundColor: '#212224', title: 'GPTProp', show: false,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#0a0912', symbolColor: '#d6d0f5', height: 52 },
+    titleBarOverlay: { color: '#191a1c', symbolColor: '#d0d1d5', height: 52 },
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
@@ -860,6 +860,7 @@ function initUpdater() {
     autoUpdater.on('update-downloaded', (i) => {
       setUpd({ state: 'ready', version: i.version, percent: 100, checkedAt: Date.now() });
       log('Update bereit:', i.version);
+      autoInstallAfterStart(i.version);
     });
     autoUpdater.on('error', (e) => {
       const msg = String(e && e.message || e);
@@ -872,8 +873,25 @@ function initUpdater() {
 function scheduleUpdates() {
   clearInterval(updTimer); updTimer = null;
   if (settings.autoUpdate === false || !app.isPackaged) return;
-  setTimeout(() => { if (settings.autoUpdate !== false) checkForUpdates(false); }, 15000);
+  setTimeout(() => { if (settings.autoUpdate !== false) checkForUpdates(false); }, 3000);
   updTimer = setInterval(() => { if (settings.autoUpdate !== false) checkForUpdates(false); }, 4 * 3600e3);
+}
+// Direkt nach dem App-Start: fertig geladenes Update ohne Klick installieren und neu starten.
+// Nur in den ersten 3 Minuten, nur wenn gerade nichts läuft, und je Version nur einmal (keine Endlosschleife).
+const APP_STARTED = Date.now();
+const START_WINDOW = 3 * 60 * 1000;
+async function autoInstallAfterStart(version) {
+  if (settings.autoUpdate === false || Date.now() - APP_STARTED > START_WINDOW) return;
+  if (settings.autoInstalledVersion === version) return;
+  let idle = false;
+  try {
+    idle = await win.webContents.executeJavaScript(
+      "!(busy || V.cap || pendingImages.length || userInput.value.trim() || drawer.classList.contains('open'))");
+  } catch { idle = false; }
+  if (!idle) return; // Knopf bleibt sichtbar; beim Beenden wird ohnehin installiert
+  settings.autoInstalledVersion = version; saveSettings();
+  log('Installiere Update automatisch nach dem Start:', version);
+  installUpdate();
 }
 function installUpdate() {
   if (updState.state !== 'ready' || !autoUpdater) { if (updState.state === 'available') shell.openExternal(updState.url).catch(() => {}); return false; }
