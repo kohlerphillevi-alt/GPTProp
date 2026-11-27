@@ -1,0 +1,13 @@
+# Abhängigkeiten & Build-Ausgabe
+node_modules/
+dist/
+
+# Logs & lokale Dateien
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Niemals Schlüssel/Einstellungen einchecken
+settings.json
+.env

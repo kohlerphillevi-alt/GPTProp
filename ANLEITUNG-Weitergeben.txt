@@ -1,0 +1,44 @@
+GPTProp – dein KI-Desktop-Assistent für Windows
+================================================
+
+Zwei Möglichkeiten (beide gleichwertig):
+
+  GPTProp-Setup.exe     -> Installieren (Startmenü- und Desktop-Verknüpfung,
+                           auf Wunsch mit Windows starten). Empfohlen.
+  GPTProp-Portable.exe  -> Ohne Installation starten, z. B. vom USB-Stick.
+
+Beim ersten Start zeigt Windows evtl. "Der Computer wurde durch Windows
+geschützt" (die App ist nicht signiert):
+  -> "Weitere Informationen" -> "Trotzdem ausführen".
+
+EINRICHTEN (einmalig, kostenlos)
+--------------------------------
+1. Gemini-Key holen: https://aistudio.google.com/apikey
+   (Google-Konto nötig, "Create API key", Key kopieren)
+2. In GPTProp oben rechts auf das Zahnrad -> Key einfügen
+   -> "Speichern & prüfen".
+Ohne Key läuft GPTProp im Offline-Modus (Apps öffnen, Listen, Erinnerungen).
+
+WAS GPTPROP KANN
+----------------
+- Fragen beantworten und Aufgaben am PC erledigen (Programme starten,
+  Dateien, Ordner, Einstellungen, PowerShell)
+- In Apps klicken und tippen (z. B. "Starte Minecraft im NoRisk Launcher")
+- Spotify steuern: "pause", "nächstes Lied", "spiel ... auf Spotify"
+- Sprachsteuerung: "Hey Prop" sagen und dann den Befehl
+  (Einstellungen -> Sprachsteuerung einschalten; Mikrofon nötig)
+- Bilder einfügen (Strg+V, hineinziehen oder Büroklammer) und dazu fragen
+- Listen und Erinnerungen
+- Strg+Leertaste holt GPTProp jederzeit nach vorn,
+  Strg+Umschalt+Leertaste startet die Spracheingabe
+  (beide Kürzel in den Einstellungen änderbar)
+- Updates kommen automatisch (installierte Version)
+- Fenster schließen = läuft im Infobereich neben der Uhr weiter
+  (Beenden: Rechtsklick auf das Symbol -> Beenden)
+
+WICHTIG
+-------
+GPTProp führt Befehle standardmäßig ohne Nachfrage aus. Wer lieber vorher
+gefragt werden möchte: Einstellungen -> "Aktionen bestätigen" einschalten.
+Jeder nutzt seinen eigenen Gemini-Key; Keys und Einstellungen bleiben nur
+auf dem eigenen PC.

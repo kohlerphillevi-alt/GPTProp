@@ -1,0 +1,62 @@
+{
+  "name": "gptprop",
+  "version": "2.0.0",
+  "description": "GPTProp Desktop-Assistent",
+  "author": "GPTProp",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kohlerphillevi-alt/GPTProp.git"
+  },
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win nsis portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "de.gptprop.app",
+    "productName": "GPTProp",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "icon.png",
+      "uia.ps1",
+      "wake.ps1"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.png",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "GPTProp-Portable.exe"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kohlerphillevi-alt",
+        "repo": "GPTProp",
+        "releaseType": "release"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "GPTProp-Setup.exe"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'">
+<title>GPTProp</title>
+<style>
+:root{color-scheme:dark;--bg:#0d0b17;--panel:#151227;--panel2:#1c1833;--line:#2a2447;--line2:#3a3260;--text:#f2efff;--muted:#9a93bf;--accent:#8b6cff;--accent-h:#7a58f5;--accent-soft:rgba(139,108,255,.14);--amber:#ffb547;--ok:#4ade80;--err:#f87171;--r:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden;font-size:15px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(55% 45% at 10% 0%,rgba(139,108,255,.20),transparent 70%),radial-gradient(40% 35% at 100% 100%,rgba(255,181,71,.07),transparent 70%)}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:#b9a8ff}
+
+/* Titelleiste */
+.titlebar{height:52px;flex:none;display:flex;align-items:center;gap:12px;padding:0 150px 0 16px;-webkit-app-region:drag;position:relative;z-index:2;border-bottom:1px solid rgba(255,255,255,.04)}
+.titlebar button,.titlebar .pill{-webkit-app-region:no-drag}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+.logo{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#9a7dff,#6a48f0);display:grid;place-items:center;box-shadow:0 4px 14px rgba(139,108,255,.45)}
+.pill{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:999px;padding:4px 11px;max-width:260px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:border-color .15s,color .15s}
+.pill:hover{border-color:var(--line2);color:var(--text)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:none}
+.dot.off{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.dot.busy{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1s infinite}
+.spacer{flex:1}
+.updbtn{-webkit-app-region:no-drag;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#1a1300;background:var(--amber);border-radius:999px;padding:5px 12px;white-space:nowrap;box-shadow:0 4px 14px -4px rgba(255,181,71,.6);animation:pop .25s ease-out}
+.updbtn:hover{filter:brightness(1.08)}
+.updbtn[hidden]{display:none}
+.iconbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted);transition:background .15s,color .15s}
+.iconbtn:hover{background:rgba(255,255,255,.06);color:var(--text)}
+
+/* Verlauf */
+.scroller{flex:1;overflow-y:auto;position:relative;z-index:1;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.thread{max-width:800px;margin:0 auto;padding:24px 20px 12px;display:flex;flex-direction:column;gap:14px}
+.msg{display:flex;gap:12px;animation:pop .2s ease-out;min-width:0}
+.msg.user{justify-content:flex-end}
+.msg.user .bubble{background:var(--accent);color:#fff;border-radius:18px 18px 6px 18px;padding:10px 15px;max-width:80%;white-space:pre-wrap;word-break:break-word;box-shadow:0 6px 18px -8px rgba(139,108,255,.7)}
+.avatar{width:30px;height:30px;border-radius:10px;flex:none;background:var(--panel2);border:1px solid var(--line);display:grid;place-items:center;margin-top:2px}
+.msg.assistant .bubble{background:var(--panel);border:1px solid var(--line);border-radius:6px 18px 18px 18px;padding:11px 15px;max-width:calc(100% - 42px);min-width:0;line-height:1.55;word-break:break-word}
+.bubble p+p,.bubble p+ul,.bubble p+ol,.bubble ul+p,.bubble ol+p,.bubble pre+p,.bubble p+pre{margin-top:6px}
+.bubble ul,.bubble ol{margin:4px 0 4px 20px}
+.bubble li{margin:2px 0}
+.bubble h4{font-size:15px;margin:8px 0 4px}
+.bubble .gap{height:6px}
+.bubble code{font-family:"Cascadia Code",Consolas,monospace;font-size:13px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px}
+.bubble pre.code{background:#0a0913;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;margin:6px 0}
+.bubble pre.code code{background:none;padding:0;white-space:pre}
+.card{margin-top:8px;padding:9px 13px;background:rgba(0,0,0,.25);border-radius:10px;font-size:14px;border-left:3px solid var(--amber)}
+.card ul{margin:4px 0 0 18px}
+
+/* Werkzeug-Aktivität */
+.tool{margin-left:42px;border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:12px;font-size:13px;animation:pop .2s ease-out;max-width:calc(100% - 42px)}
+.tool summary{list-style:none;cursor:pointer;padding:8px 12px;display:flex;align-items:center;gap:9px;color:var(--muted);user-select:none;min-width:0}
+.tool summary::-webkit-details-marker{display:none}
+.tool summary .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tool summary .lbl b{color:var(--text);font-weight:600}
+.tool summary .chev{transition:transform .15s;flex:none}
+.tool[open] summary .chev{transform:rotate(90deg)}
+.tool .st{width:16px;height:16px;flex:none;display:grid;place-items:center}
+.tool .st.run::after{content:"";width:12px;height:12px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin .8s linear infinite}
+.tool .st.ok{color:var(--ok)}.tool .st.err{color:var(--err)}
+.tool pre{margin:0 12px 10px;background:#0a0913;border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:"Cascadia Code",Consolas,monospace;font-size:12px;color:#d6d0f5}
+.tool .k{margin:0 12px 4px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+
+/* Bestätigung */
+.confirm{margin-left:42px;border:1px solid rgba(255,181,71,.45);background:rgba(255,181,71,.06);border-radius:14px;padding:12px 14px;animation:pop .2s ease-out;max-width:calc(100% - 42px)}
+.confirm h5{font-size:14px;display:flex;gap:8px;align-items:center;margin-bottom:8px;color:#ffd79a}
+.confirm pre{background:#0a0913;border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:"Cascadia Code",Consolas,monospace;font-size:12.5px}
+.confirm .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{white-space:nowrap;border-radius:10px;padding:7px 14px;font-size:13.5px;font-weight:600;border:1px solid var(--line2);background:rgba(255,255,255,.04);transition:background .15s,border-color .15s}
+.btn:hover{background:rgba(255,255,255,.09)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-h)}
+.btn.warn{background:var(--amber);border-color:var(--amber);color:#1a1300}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:default}
+.confirm.done{opacity:.6}
+
+/* Tippen */
+.typing{display:flex;gap:4px;padding:6px 2px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+
+/* Willkommen */
+.welcome{text-align:center;padding:40px 10px 10px;animation:pop .3s ease-out}
+.welcome .big{width:64px;height:64px;border-radius:20px;margin:0 auto 16px;background:linear-gradient(135deg,#9a7dff,#6a48f0);display:grid;place-items:center;box-shadow:0 12px 40px -6px rgba(139,108,255,.6)}
+.welcome h2{font-size:26px;letter-spacing:-.02em;margin-bottom:6px}
+.welcome p{color:var(--muted);max-width:460px;margin:0 auto}
+.sugg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:26px auto 0;max-width:620px;text-align:left}
+.sugg button{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;transition:border-color .15s,transform .15s,background .15s}
+.sugg button:hover{border-color:var(--accent);background:var(--panel2);transform:translateY(-1px)}
+.sugg b{display:block;font-size:14px;margin-bottom:2px}
+.sugg span{font-size:12.5px;color:var(--muted)}
+.keynote{margin:18px auto 0;max-width:620px;border:1px dashed rgba(255,181,71,.5);background:rgba(255,181,71,.06);border-radius:14px;padding:11px 14px;font-size:13.5px;color:#ffd79a;display:flex;gap:10px;align-items:center;justify-content:space-between;text-align:left}
+
+/* Eingabe */
+.composer-wrap{flex:none;position:relative;z-index:1;padding:8px 20px 14px}
+.composer{max-width:800px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:7px 7px 7px 7px;transition:border-color .15s,box-shadow .15s;box-shadow:0 14px 40px -18px rgba(0,0,0,.8)}
+.composer:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),0 14px 40px -18px rgba(0,0,0,.8)}
+.composer textarea{flex:1;min-width:0;resize:none;background:transparent;border:none;outline:none;color:var(--text);font:inherit;line-height:1.45;padding:8px 0;max-height:180px;height:37px;overflow-y:hidden;scrollbar-width:thin}
+.composer textarea::placeholder{color:#6f6899}
+.composer .mic+.mic{margin-left:-6px}
+.attach-strip{max-width:800px;margin:0 auto 8px;display:none;gap:8px;flex-wrap:wrap}
+.attach-strip.on{display:flex}
+.thumb{position:relative;width:64px;height:64px;border-radius:12px;overflow:hidden;border:1px solid var(--line2);background:var(--panel2);animation:pop .15s ease-out}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:13px;line-height:20px;text-align:center}
+.thumb button:hover{background:var(--err)}
+.msg.user .imgs{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:6px}
+.msg.user .imgs img{max-width:220px;max-height:180px;border-radius:12px;display:block;cursor:zoom-in;border:1px solid rgba(255,255,255,.15)}
+.msg.user .stack{display:flex;flex-direction:column;align-items:flex-end;max-width:80%}
+.msg.user .stack .bubble{max-width:100%}
+.dropzone{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(13,11,23,.82);border:3px dashed var(--accent);border-radius:18px;margin:8px;font-size:20px;font-weight:600;color:#cfc6ff;pointer-events:none}
+.dropzone.on{display:grid}
+.lightbox{position:fixed;inset:0;z-index:30;background:rgba(5,4,12,.9);display:none;place-items:center;cursor:zoom-out}
+.lightbox.on{display:grid}
+.lightbox img{max-width:94vw;max-height:90vh;border-radius:12px}
+.send{width:38px;height:38px;border-radius:14px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none;transition:background .15s,transform .1s}
+.send:hover{background:var(--accent-h)}
+.send:active{transform:scale(.95)}
+.send.stop{background:#3a3260}
+.mic{width:38px;height:38px;border-radius:14px;color:var(--muted);display:grid;place-items:center;flex:none;transition:background .15s,color .15s}
+.mic:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.mic.rec{background:rgba(248,113,113,.15);color:var(--err);animation:pulse 1.2s infinite}
+.listen{max-width:800px;margin:0 auto 8px;display:none;align-items:center;gap:12px;background:linear-gradient(90deg,rgba(139,108,255,.18),rgba(139,108,255,.06));border:1px solid rgba(139,108,255,.45);border-radius:16px;padding:9px 12px 9px 16px;animation:pop .2s ease-out}
+.listen.on{display:flex}
+.listen .t{flex:1;font-size:14px;font-weight:600}
+.listen .t small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.bars{display:flex;gap:3px;align-items:center;height:22px}
+.bars i{width:4px;border-radius:3px;background:var(--accent);height:4px;transition:height .08s}
+.hintline{max-width:800px;margin:7px auto 0;text-align:center;font-size:11.5px;color:#6f6899}
+.hintline kbd{font-family:inherit;border:1px solid var(--line);border-radius:5px;padding:0 5px;color:var(--muted)}
+
+/* Einstellungen */
+.scrim{position:fixed;inset:0;background:rgba(5,4,12,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:11;transform:translateX(102%);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+.drawer.open{transform:none}
+.drawer header{height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 150px 0 20px;border-bottom:1px solid var(--line);-webkit-app-region:drag}
+.drawer header h3{font-size:16px}
+.drawer header button{-webkit-app-region:no-drag}
+.drawer .body{flex:1;overflow-y:auto;padding:18px 20px 30px;display:flex;flex-direction:column;gap:22px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.sec h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+.sec .desc{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.field{display:flex;gap:6px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:4px 4px 4px 12px}
+.field:focus-within{border-color:var(--accent)}
+.field input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font:inherit;font-size:14px;padding:6px 0}
+select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;font-size:14px;outline:none}
+select:focus{border-color:var(--accent)}
+.row2{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.status{font-size:13px;margin-top:9px;min-height:18px;line-height:1.45;word-break:break-word}
+.status.ok{color:var(--ok)}.status.err{color:var(--err)}.status.info{color:var(--muted)}
+.toggle{display:flex;align-items:flex-start;gap:12px;padding:10px 0;cursor:pointer}
+.toggle+.toggle{border-top:1px solid var(--line)}
+.toggle .t{flex:1}
+.toggle .t b{display:block;font-size:14px;font-weight:600}
+.toggle .t span{font-size:12.5px;color:var(--muted)}
+.switch{position:relative;width:40px;height:22px;flex:none;margin-top:2px}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.switch i{position:absolute;inset:0;border-radius:999px;background:var(--line2);transition:background .2s;pointer-events:none}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch input:checked+i{background:var(--accent)}
+.switch input:checked+i::after{transform:translateX(18px)}
+.switch input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+.hk-row{display:flex;align-items:center;gap:6px;padding:6px 0}
+.hk-row>span{flex:1;font-size:14px;font-weight:600}
+.hk{min-width:150px;padding:7px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line2);font-family:"Cascadia Code",Consolas,monospace;font-size:13px;color:var(--text);text-align:center;transition:border-color .15s}
+.hk:hover{border-color:var(--accent)}
+.hk.rec{border-color:var(--amber);color:#ffd79a;animation:pulse 1.2s infinite}
+.hk.off{color:var(--muted)}
+.hk-row .btn{padding:7px 10px}
+.ver{font-size:12px;color:#6f6899;text-align:center}
+
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@keyframes pulse{50%{opacity:.4}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:560px){.sugg{grid-template-columns:1fr}.thread{padding:16px 12px}.composer-wrap{padding:6px 10px 10px}.hintline{display:none}.pill{display:none}}
+</style>
+</head>
+<body>
+<header class="titlebar">
+  <div class="brand"><span class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-5 1-8 4-9 1 4-1 7-4 9zM12 12c4 3 4 6 2 9-4-1-5-5-2-9zM12 12c-5-1-8 0-9 3 3 2 7 1 9-3z"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></span>GPTProp</div>
+  <button class="pill" id="statusPill" title="Einstellungen öffnen"><i class="dot off" id="statusDot"></i><span id="statusText">Lädt…</span></button>
+  <div class="spacer"></div>
+  <button class="updbtn" id="updBtn" hidden></button>
+  <button class="iconbtn" id="newChatBtn" title="Neuer Chat" aria-label="Neuer Chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+  <button class="iconbtn" id="settingsBtn" title="Einstellungen" aria-label="Einstellungen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+</header>
+
+<main class="scroller" id="scroller">
+  <div class="thread" id="chatMessages"></div>
+</main>
+
+<footer class="composer-wrap">
+  <div class="listen" id="listenBar"><div class="bars" id="bars"><i></i><i></i><i></i><i></i><i></i></div><div class="t" id="listenText">Ich höre zu…<small>Sprich deinen Befehl – ich höre auf, wenn du eine Pause machst.</small></div><button class="btn" id="listenStop">Fertig</button><button class="btn ghost" id="listenCancel">Abbrechen</button></div>
+  <div class="attach-strip" id="attachStrip"></div>
+  <div class="composer">
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    <button class="mic" id="attachBtn" title="Bild anhängen (oder Strg+V / hineinziehen)" aria-label="Bild anhängen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
+    <button class="mic" id="micBtn" title="Spracheingabe" aria-label="Spracheingabe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></button>
+    <textarea id="userInput" rows="1" placeholder="Nachricht an GPTProp…" autocomplete="off" autofocus></textarea>
+    <button class="send" id="sendBtn" title="Senden" aria-label="Senden"></button>
+  </div>
+  <div class="hintline"><kbd>Enter</kbd> senden · <kbd>Shift</kbd>+<kbd>Enter</kbd> neue Zeile · <span class="hkhint"></span><span id="wakeHint">„Hey Prop“ zum Sprechen</span></div>
+</footer>
+
+<div class="dropzone" id="dropzone">🖼️ Bild hier loslassen</div>
+<div class="lightbox" id="lightbox"><img alt=""></div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Einstellungen" aria-hidden="true">
+  <header><h3>Einstellungen</h3><button class="iconbtn" id="closeSettings" aria-label="Schließen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
+  <div class="body">
+    <section class="sec">
+      <h4>Gemini-API-Key</h4>
+      <p class="desc">Mit einem kostenlosen Key von Google AI Studio wird GPTProp zum echten KI-Assistenten. <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Kostenlosen Key holen ↗</a></p>
+      <div class="field">
+        <input type="password" id="keyInput" placeholder="AIza…" autocomplete="off" spellcheck="false">
+        <button class="iconbtn" id="eyeBtn" title="Anzeigen" aria-label="Key anzeigen"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <div class="row2"><button class="btn primary" id="saveKeyBtn">Speichern &amp; prüfen</button><button class="btn" id="testKeyBtn">Gespeicherten Key testen</button><button class="btn ghost" id="removeKeyBtn">Entfernen</button></div>
+      <div class="status info" id="keyStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>Modell</h4>
+      <p class="desc"><b>Automatisch</b> nimmt für maximale Geschwindigkeit immer das kleinste Gratis-Modell (Flash-Lite) und weicht nur auf größere aus, wenn es ausgelastet ist oder das Limit erreicht hat.</p>
+      <select id="modelSelect"><option value="auto">Automatisch (empfohlen)</option></select>
+      <div class="row2"><button class="btn" id="reloadModelsBtn">Modellliste aktualisieren</button></div>
+      <div class="status info" id="modelStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>Spotify</h4>
+      <p class="desc">Play, Pause, Weiter und Lautstärke funktionieren sofort. Damit GPTProp <b>bestimmte Songs automatisch abspielt</b>, einmalig einen kostenlosen Zugang anlegen: <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify-Dashboard ↗</a> → „Create app“ → Name egal, Redirect URI <code>http://127.0.0.1:8888/callback</code>, „Web API“ anhaken → Speichern → Settings → Client ID und Client Secret hier einfügen.</p>
+      <div class="field"><input type="text" id="spIdInput" placeholder="Client ID" autocomplete="off" spellcheck="false"></div>
+      <div class="field" style="margin-top:8px"><input type="password" id="spSecretInput" placeholder="Client Secret" autocomplete="off" spellcheck="false"></div>
+      <div class="row2"><button class="btn primary" id="spSaveBtn">Speichern &amp; prüfen</button><button class="btn ghost" id="spRemoveBtn">Entfernen</button></div>
+      <div class="status info" id="spStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>Sprachsteuerung</h4>
+      <label class="toggle"><span class="t"><b>„Hey Prop“ aktivieren</b><span>Lauscht offline auf das Aktivierungswort. Erst danach wird dein Befehl aufgenommen und von Gemini in Text umgewandelt.</span></span><span class="switch"><input type="checkbox" id="voiceToggle"><i></i></span></label>
+      <label class="toggle"><span class="t"><b>Antworten vorlesen</b><span>Bei Sprachbefehlen liest GPTProp die Antwort laut vor.</span></span><span class="switch"><input type="checkbox" id="voiceSpeakToggle"><i></i></span></label>
+      <div style="margin-top:8px;display:flex;gap:8px"><select id="ttsVoice" style="flex:1"></select><button class="btn" id="ttsTest">▶ Probe</button></div>
+      <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted)">Tempo <input type="range" id="ttsRate" min="0.8" max="1.8" step="0.05" style="flex:1;accent-color:var(--accent)"><span id="ttsRateVal" style="width:42px;text-align:right;color:var(--text)"></span></label>
+      <div style="margin-top:8px"><select id="voiceSens"><option value="low">Empfindlichkeit: niedrig (weniger Fehlalarme)</option><option value="normal">Empfindlichkeit: normal</option><option value="high">Empfindlichkeit: hoch (reagiert leichter)</option></select></div>
+      <div class="status info" id="voiceStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>Tastenkürzel</h4>
+      <p class="desc">Funktionieren überall in Windows, auch wenn GPTProp im Hintergrund ist. Ins Feld klicken und die neue Kombination drücken (Esc = abbrechen).</p>
+      <div class="hk-row"><span>GPTProp öffnen</span><button class="hk" data-hk="hotkeyOpen"></button><button class="btn ghost" data-hkreset="hotkeyOpen" title="Standard wiederherstellen">↺</button></div>
+      <div class="hk-row"><span>Spracheingabe starten</span><button class="hk" data-hk="hotkeyVoice"></button><button class="btn ghost" data-hkreset="hotkeyVoice" title="Standard wiederherstellen">↺</button><button class="btn ghost" data-hkoff="hotkeyVoice" title="Kürzel ausschalten">Aus</button></div>
+      <div class="status info" id="hkStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>PC-Zugriff &amp; Allgemein</h4>
+      <label class="toggle"><span class="t"><b>Aktionen bestätigen</b><span>Aus = GPTProp führt alles sofort aus. An = vor PowerShell-Befehlen, dem Schreiben und Löschen von Dateien nachfragen.</span></span><span class="switch"><input type="checkbox" id="confirmToggle"><i></i></span></label>
+      <label class="toggle"><span class="t"><b>Mit Windows starten</b><span>GPTProp startet im Hintergrund, damit Erinnerungen ankommen.</span></span><span class="switch"><input type="checkbox" id="autostartToggle"><i></i></span></label>
+    </section>
+    <section class="sec">
+      <h4>Updates</h4>
+      <label class="toggle"><span class="t"><b>Automatisch aktualisieren</b><span>Sucht beim Start und alle 4 Stunden auf GitHub nach neuen Versionen und lädt sie im Hintergrund.</span></span><span class="switch"><input type="checkbox" id="autoUpdToggle"><i></i></span></label>
+      <div class="row2" style="margin-top:4px"><button class="btn" id="updCheckBtn">Jetzt nach Updates suchen</button><button class="btn warn" id="updInstallBtn" hidden>Neu starten &amp; aktualisieren</button></div>
+      <div class="status info" id="updStatus"></div>
+    </section>
+    <section class="sec">
+      <h4>Daten</h4>
+      <div class="row2" style="margin-top:0"><button class="btn" id="clearChatBtn">Chat leeren</button><button class="btn" id="clearDataBtn">Listen &amp; Erinnerungen löschen</button><button class="btn" id="openLogBtn">Diagnose-Protokoll öffnen</button></div>
+      <div class="status info" id="dataStatus"></div>
+    </section>
+    <div class="ver" id="verText"></div>
+  </div>
+</aside>
+
+<script>
+/* ================= Grundlagen ================= */
+const $=id=>document.getElementById(id);
+const chatMessages=$('chatMessages'),scroller=$('scroller'),userInput=$('userInput'),sendBtn=$('sendBtn');
+/* window.api kommt aus preload.js (contextBridge) – global als "api" verfügbar */
+const KEY='gpterik:v1';
+let state={lists:{},reminders:[]};
+const timers={};
+let S={hasKey:false,model:'auto',confirmActions:true,env:{}};
+let busy=false,runId=0,currentStart=0,sessionAllow=false;
+let convo=[];
+
+const ICON_SEND='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+const ICON_STOP='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>';
+const AVATAR='<div class="avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b9a8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-5 1-8 4-9 1 4-1 7-4 9zM12 12c4 3 4 6 2 9-4-1-5-5-2-9zM12 12c-5-1-8 0-9 3 3 2 7 1 9-3z"/></svg></div>';
+
+function load(){try{const r=localStorage.getItem(KEY);if(r){const s=JSON.parse(r);state.lists=s.lists&&typeof s.lists==='object'?s.lists:{};state.reminders=Array.isArray(s.reminders)?s.reminders:[];}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const fmt=ts=>new Date(ts).toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const nearBottom=()=>scroller.scrollHeight-scroller.scrollTop-scroller.clientHeight<160;
+function scrollDown(force){if(force||nearBottom())scroller.scrollTop=scroller.scrollHeight;}
+function hideWelcome(){const w=$('welcome');if(w)w.remove();}
+function append(el){hideWelcome();const f=nearBottom();chatMessages.appendChild(el);if(f)scroller.scrollTop=scroller.scrollHeight;return el;}
+
+/* Mini-Markdown (sicher: erst escapen, dann formatieren) */
+function md(src){
+  const blocks=[],codes=[];
+  let s=String(src||'').replace(/\r/g,'');
+  s=s.replace(/```[^\n`]*\n?([\s\S]*?)```/g,(m,code)=>{blocks.push(`<pre class="code"><code>${esc(code.replace(/\n$/,''))}</code></pre>`);return `\u0000${blocks.length-1}\u0000`;});
+  s=s.replace(/`([^`\n]+)`/g,(m,c)=>{codes.push(`<code>${esc(c)}</code>`);return `\u0001${codes.length-1}\u0001`;});
+  s=esc(s);
+  const inline=t=>t.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*\w])\*([^*\n]+?)\*(?![*\w])/g,'$1<em>$2</em>')
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  let html='',list=null,lastEmpty=false;
+  const close=()=>{if(list){html+=`</${list}>`;list=null;}};
+  for(const line of s.split('\n')){
+    let m;
+    if((m=line.match(/^\s*\u0000(\d+)\u0000\s*$/))){close();html+=line.trim();lastEmpty=false;continue;}
+    if((m=line.match(/^#{1,6}\s+(.*)/))){close();html+=`<h4>${inline(m[1])}</h4>`;lastEmpty=false;continue;}
+    if((m=line.match(/^\s*[-*•]\s+(.*)/))){if(list!=='ul'){close();html+='<ul>';list='ul';}html+=`<li>${inline(m[1])}</li>`;lastEmpty=false;continue;}
+    if((m=line.match(/^\s*\d+[.)]\s+(.*)/))){if(list!=='ol'){close();html+='<ol>';list='ol';}html+=`<li>${inline(m[1])}</li>`;lastEmpty=false;continue;}
+    if(!line.trim()){if(!list&&!lastEmpty&&html)html+='<div class="gap"></div>';lastEmpty=true;continue;}
+    close();lastEmpty=false;html+=`<p>${inline(line)}</p>`;
+  }
+  close();
+  return html.replace(/\u0000(\d+)\u0000/g,(m,i)=>blocks[+i]||'').replace(/\u0001(\d+)\u0001/g,(m,i)=>codes[+i]||'');
+}
+
+function addMessage(html,sender,extra=''){
+  const d=document.createElement('div');d.className='msg '+sender;
+  if(sender==='user')d.innerHTML=`<div class="bubble">${html}</div>`;
+  else d.innerHTML=AVATAR+`<div class="bubble">${html}${extra}</div>`;
+  append(d);if(sender==='user')scrollDown(true);
+  if(sender==='assistant'&&voiceTurn&&S.voiceSpeak!==false)speak(d.querySelector('.bubble').innerText);
+  return d;
+}
+const card=(html,color)=>`<div class="card"${color?` style="border-color:${color}"`:''}>${html}</div>`;
+function reply(html,cardHtml,color){addMessage(html,'assistant',cardHtml?card(cardHtml,color):'');}
+function showTyping(){hideTyping();const d=document.createElement('div');d.className='msg assistant';d.id='typing';d.innerHTML=AVATAR+'<div class="bubble" style="display:flex;align-items:center;gap:10px"><div class="typing"><i></i><i></i><i></i></div><span class="prog" style="font-size:12.5px;color:var(--muted)"></span></div>';append(d);}
+function setProgress(t){const p=document.querySelector('#typing .prog');if(p)p.textContent=t==='Modellliste'?'Suche verfügbares Modell…':`Frage ${t}…`;}
+function hideTyping(){const t=$('typing');if(t)t.remove();}
+
+/* ================= Listen & Erinnerungen (lokal) ================= */
+function listKey(n){return String(n||'').toLowerCase().replace(/^(meine|meiner|die|der|deine|mein)\s+/,'').trim();}
+function findList(name){const k=listKey(name);if(!k)return undefined;return Object.keys(state.lists).find(x=>x===k||x.includes(k)||k.includes(x));}
+
+const APPS=[
+ {n:'Spotify',k:['spotify'],proto:'spotify:',web:'https://open.spotify.com'},
+ {n:'Browser',k:['browser','chrome','firefox','edge'],web:'https://www.google.com'},
+ {n:'VS Code',k:['vs code','vscode','code','editor'],proto:'vscode:',web:'https://vscode.dev'},
+ {n:'YouTube',k:['youtube'],web:'https://www.youtube.com'},
+ {n:'E-Mail (Gmail)',k:['mail','gmail','e-mail','email'],web:'https://mail.google.com'},
+ {n:'Kalender',k:['kalender'],web:'https://calendar.google.com'},
+ {n:'Karten',k:['maps','karte','karten'],web:'https://maps.google.com'},
+ {n:'WhatsApp',k:['whatsapp'],proto:'whatsapp:',web:'https://web.whatsapp.com'},
+ {n:'GitHub',k:['github'],web:'https://github.com'},
+ {n:'Netflix',k:['netflix'],web:'https://www.netflix.com'}
+];
+function openApp(text){
+  const l=text.toLowerCase();
+  const app=APPS.find(a=>a.k.some(k=>new RegExp('(^|[^a-zäöü])'+k.replace(/[-.]/g,'\\$&')+'([^a-zäöü]|$)').test(l)));
+  if(!app){reply('Diese App kenne ich im Offline-Modus noch nicht.',`Ich kann öffnen: ${APPS.map(a=>esc(a.n)).join(', ')}. Mit Gemini-Key kann ich jedes Programm starten.`,'#f59e0b');return;}
+  api.tool('open_item',{target:app.proto||app.web});
+  const fb=app.proto?` Falls die Desktop-App nicht reagiert: <a href="${app.web}" target="_blank" rel="noopener">Web-Version öffnen</a>.`:'';
+  reply(`Alles klar, ich öffne <strong>${esc(app.n)}</strong> für dich.`,`🚀 <strong>${esc(app.n)}</strong> wurde angefordert.${fb}`,'#38bdf8');
+}
+function showLists(name){
+  if(name){
+    const k=findList(name);
+    if(!k){reply('Diese Liste gibt es noch nicht.',`Vorhandene Listen: ${Object.keys(state.lists).map(esc).join(', ')||'keine'}.`);return;}
+    const items=state.lists[k];
+    reply(`Hier ist deine <strong>${esc(cap(k))}</strong>:`,items.length?`<ul>${items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:'Die Liste ist leer.');
+  }else{
+    const ks=Object.keys(state.lists);
+    reply(ks.length?'Das sind deine Listen:':'Du hast noch keine Listen.',ks.length?`<ul>${ks.map(k=>`<li>${esc(cap(k))} (${state.lists[k].length})</li>`).join('')}</ul>`:'Sag z. B.: „Setze Milch auf meine Einkaufsliste“.');
+  }
+}
+function listAdd(item,name){
+  const k=listKey(name)||'einkaufsliste';
+  state.lists[k]=state.lists[k]||[];
+  if(state.lists[k].some(i=>i.toLowerCase()===String(item).toLowerCase()))return{k,dup:true};
+  state.lists[k].push(String(item));save();return{k,dup:false};
+}
+function addToList(item,name){
+  const r=listAdd(item,name);
+  if(r.dup){reply(`<strong>${esc(item)}</strong> steht schon auf deiner ${esc(cap(r.k))}.`);return;}
+  reply(`Ich habe <strong>${esc(item)}</strong> zu deiner ${esc(cap(r.k))} hinzugefügt.`,`📋 ${esc(cap(r.k))}: ${state.lists[r.k].map(esc).join(', ')}`);
+}
+function listRemove(item,name){
+  const k=findList(name||'einkaufsliste');
+  if(!k)return{error:'Liste nicht gefunden'};
+  const i=state.lists[k].findIndex(x=>x.toLowerCase()===String(item).toLowerCase());
+  if(i<0)return{k,error:'Eintrag nicht gefunden'};
+  state.lists[k].splice(i,1);save();return{k};
+}
+function removeFromList(item,name){
+  const r=listRemove(item,name);
+  if(!r.k){reply('Diese Liste gibt es nicht.');return;}
+  if(r.error){reply(`<strong>${esc(item)}</strong> steht nicht auf der ${esc(cap(r.k))}.`);return;}
+  reply(`<strong>${esc(item)}</strong> ist von der ${esc(cap(r.k))} gestrichen.`,`📋 ${state.lists[r.k].length?state.lists[r.k].map(esc).join(', '):'Die Liste ist jetzt leer.'}`);
+}
+
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(.2,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.6);o.start();o.stop(c.currentTime+.6);setTimeout(()=>c.close(),1000);}catch(e){}}
+function fire(r,late){
+  delete timers[r.id];
+  state.reminders=state.reminders.filter(x=>x.id!==r.id);save();
+  reply(late?'Das habe ich verpasst, während ich geschlossen war:':'⏰ <strong>Erinnerung!</strong>',`${esc(r.task)}${late?` (war fällig: ${fmt(r.at)})`:''}`,'#f59e0b');
+  beep();
+  try{if('Notification' in window&&Notification.permission==='granted')new Notification('GPTProp',{body:r.task});}catch(e){}
+}
+function schedule(r){
+  const ms=r.at-Date.now();
+  if(ms<=0){fire(r,true);return;}
+  if(ms>2147483000){timers[r.id]=setTimeout(()=>schedule(r),2147483000);return;}
+  timers[r.id]=setTimeout(()=>fire(r,false),ms);
+}
+function reminderAdd(at,task){
+  const r={id:Date.now()+''+Math.floor(Math.random()*1000),at,task:String(task||'Erinnerung')};
+  state.reminders.push(r);save();schedule(r);
+  try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}
+  return r;
+}
+function parseReminder(text){
+  const l=text.toLowerCase();let at=null;
+  const rel=l.match(/in\s+(\d+)\s*(sekunden|sekunde|sek|minuten|minute|min|stunden|stunde|std)\b/);
+  const abs=l.match(/um\s+(\d{1,2})(?:[:.](\d{2}))?\s*(?:uhr)?/);
+  const now=new Date();
+  if(rel){const n=+rel[1],u=rel[2];at=Date.now()+n*(u.startsWith('sek')?1000:u.startsWith('m')?60000:3600000);}
+  else if(abs&&+abs[1]<24&&+(abs[2]||0)<60){
+    const d=new Date();d.setHours(+abs[1],+(abs[2]||0),0,0);
+    if(/übermorgen/.test(l))d.setDate(d.getDate()+2);else if(/morgen/.test(l))d.setDate(d.getDate()+1);
+    else if(d<=now&&!/heute/.test(l))d.setDate(d.getDate()+1);
+    at=d.getTime();
+  }
+  const task=text.replace(/erinnere\s+mich|erinnerung/i,'').replace(/in\s+\d+\s*\w+/i,'').replace(/um\s+\d{1,2}(?:[:.]\d{2})?\s*(?:uhr)?/i,'').replace(/übermorgen|morgen|heute/ig,'').replace(/^[\s,]*(?:daran,?\s*|dass\s+|an\s+)?/i,'').trim();
+  return{at,task};
+}
+function addReminder(text){
+  const {at,task}=parseReminder(text);
+  if(!at||at<=Date.now()){reply('Wann soll ich dich erinnern?','Sag z. B.: „Erinnere mich morgen um 10 Uhr an Meeting“ oder „… in 20 Minuten an die Wäsche“.','#f59e0b');return;}
+  const r=reminderAdd(at,task);
+  reply('Erinnerung gespeichert!',`⏰ ${fmt(at)}: ${esc(r.task)}<br><span style="color:var(--muted)">Ich melde mich, solange GPTProp läuft (auch im Infobereich).</span>`);
+}
+function showReminders(){
+  const rs=[...state.reminders].sort((a,b)=>a.at-b.at);
+  reply(rs.length?'Das sind deine offenen Erinnerungen:':'Du hast keine offenen Erinnerungen.',rs.length?`<ul>${rs.map(r=>`<li>${fmt(r.at)} – ${esc(r.task)}</li>`).join('')}</ul>`:'');
+}
+function clearAllReminders(){Object.values(timers).forEach(clearTimeout);for(const k in timers)delete timers[k];state.reminders=[];save();}
+
+/* Offline-Modus (ohne Key) */
+function offlineLogic(text){
+  const l=text.toLowerCase().trim();let m;
+  if(/erinnere\s+mich/.test(l)){addReminder(text);return;}
+  if(/(lösche|entferne).*erinnerungen/.test(l)){clearAllReminders();reply('Alle Erinnerungen sind gelöscht.');return;}
+  if(/(zeige|zeig|welche|was\s+steht).*erinnerung/.test(l)||/^erinnerungen/.test(l)){showReminders();return;}
+  if((m=text.match(/(?:lösche|entferne|streiche|nimm)\s+(.+?)\s+(?:von|aus|auf)\s+(.+)/i))){removeFromList(m[1].trim(),m[2].replace(/[.!?]$/,'').trim());return;}
+  if(/(zeige|zeig|lies|was\s+steht).*list/.test(l)||/^(listen|liste)\b/.test(l)){
+    if(/alle\s+listen|^listen/.test(l)){showLists();return;}
+    const nm=text.match(/([\wäöüß-]*liste[\wäöüß-]*)/i);showLists(nm?nm[1]:'');return;}
+  if((m=text.match(/(?:setze|setz|schreibe|schreib|packe|pack|füge|füg|tu|tue|trage|trag)\s+(.+?)\s+(?:auf|zu|zur|zum|in)\s+(.+?)(?:\s+(?:hinzu|drauf|ein))?[.!?]?$/i))){addToList(m[1].trim(),m[2].trim());return;}
+  if(/öffne|starte|öffnen|starten/.test(l)){openApp(text);return;}
+  reply(`Im Offline-Modus verstehe ich das noch nicht: „${esc(text)}“.`,'Hinterlege in den <a href="#" data-open-settings>Einstellungen</a> einen kostenlosen Gemini-Key – dann kann ich frei antworten und deinen PC steuern. Offline kann ich Apps öffnen, Listen führen und erinnern.','#f59e0b');
+}
+
+/* ================= Gemini-Agent ================= */
+const P=(type,description,extra={})=>({type,description,...extra});
+const DECLS=[
+ {name:'run_command',description:'Führt einen PowerShell-Befehl/-Skript auf dem Windows-PC des Nutzers aus (mit den Rechten des Nutzers, ohne Konsole). Für Programme starten (Start-Process), Systemabfragen, Dateien suchen/verschieben/kopieren, Prozesse, Netzwerk, Einstellungen usw. Liefert stdout, stderr und exit_code.',parameters:{type:'OBJECT',properties:{command:P('STRING','Der PowerShell-Befehl'),cwd:P('STRING','Arbeitsordner (optional, Standard: Benutzerordner)'),timeout_seconds:P('INTEGER','Maximale Laufzeit in Sekunden (Standard 60, max. 600)')},required:['command']}},
+ {name:'read_file',description:'Liest eine Textdatei.',parameters:{type:'OBJECT',properties:{path:P('STRING','Dateipfad (absolut, ~ oder %VAR% erlaubt)'),max_chars:P('INTEGER','Max. Zeichen (Standard 30000)')},required:['path']}},
+ {name:'write_file',description:'Schreibt Text in eine Datei (legt Ordner an, überschreibt oder hängt an).',parameters:{type:'OBJECT',properties:{path:P('STRING','Dateipfad'),content:P('STRING','Inhalt'),append:P('BOOLEAN','true = anhängen statt überschreiben')},required:['path','content']}},
+ {name:'list_directory',description:'Listet den Inhalt eines Ordners auf.',parameters:{type:'OBJECT',properties:{path:P('STRING','Ordnerpfad')},required:['path']}},
+ {name:'open_item',description:'Öffnet eine Datei, einen Ordner (im Explorer), eine Webseite (https://…) oder ein App-Protokoll (z. B. spotify:, ms-settings:) mit dem Standardprogramm.',parameters:{type:'OBJECT',properties:{target:P('STRING','Pfad oder URL')},required:['target']}},
+ {name:'delete_item',description:'Verschiebt eine Datei oder einen Ordner in den Papierkorb.',parameters:{type:'OBJECT',properties:{path:P('STRING','Pfad')},required:['path']}},
+ {name:'system_info',description:'Liefert Systeminfos: Windows-Version, Benutzer, wichtige Ordner, CPU, RAM, Laufzeit, Uhrzeit.'},
+ {name:'clipboard_read',description:'Liest den Text in der Zwischenablage.'},
+ {name:'clipboard_write',description:'Kopiert Text in die Zwischenablage.',parameters:{type:'OBJECT',properties:{text:P('STRING','Text')},required:['text']}},
+ {name:'list_add',description:'Fügt Einträge zu einer GPTProp-Liste hinzu (z. B. Einkaufsliste, To-do).',parameters:{type:'OBJECT',properties:{list:P('STRING','Name der Liste, z. B. einkaufsliste'),items:{type:'ARRAY',items:{type:'STRING'},description:'Einträge'}},required:['list','items']}},
+ {name:'list_remove',description:'Entfernt einen Eintrag aus einer GPTProp-Liste.',parameters:{type:'OBJECT',properties:{list:P('STRING','Name der Liste'),item:P('STRING','Eintrag')},required:['list','item']}},
+ {name:'list_show',description:'Zeigt alle GPTProp-Listen mit Einträgen.'},
+ {name:'reminder_add',description:'Legt eine Erinnerung an (Benachrichtigung + Ton zur Zeit). Entweder datetime oder in_minutes angeben.',parameters:{type:'OBJECT',properties:{task:P('STRING','Woran erinnert werden soll'),datetime:P('STRING','Lokale Zeit im Format YYYY-MM-DDTHH:MM'),in_minutes:P('NUMBER','In wie vielen Minuten')},required:['task']}},
+ {name:'reminder_list',description:'Zeigt alle offenen Erinnerungen.'},
+ {name:'reminder_clear',description:'Löscht alle offenen Erinnerungen.'},
+ {name:'app_launch',description:'Startet ein installiertes Programm über das Startmenü per Name (z. B. "NoRisk Launcher", "Discord", "Steam", "Rechner"). Bevorzugter Weg, um Programme zu öffnen.',parameters:{type:'OBJECT',properties:{name:P('STRING','Name der App wie im Startmenü')},required:['name']}},
+ {name:'ui_windows',description:'Listet alle offenen Fenster (Titel und Prozess).'},
+ {name:'ui_snapshot',description:'Liest die Bedienelemente eines Fensters (Knöpfe, Felder, Texte, Links) als Liste "Typ: Name". Nutze das, um zu sehen, was man in einer App anklicken kann. Wartet bis wait_seconds, falls das Fenster noch lädt.',parameters:{type:'OBJECT',properties:{window:P('STRING','Fenstertitel, App- oder Prozessname (Teilname reicht, z. B. "NoRisk")'),filter:P('STRING','Optional: nur Elemente, deren Name diesen Text enthält'),wait_seconds:P('NUMBER','Max. Wartezeit auf das Fenster (Standard 10)')},required:['window']}},
+ {name:'ui_click',description:'Klickt in einer App auf ein Element per Name (Knopf, Link, Tab, Listeneintrag …). Wartet automatisch bis wait_seconds, bis das Element erscheint – ideal direkt nach app_launch.',parameters:{type:'OBJECT',properties:{window:P('STRING','Fenster/App (Teilname reicht)'),name:P('STRING','Name/Beschriftung des Elements (Teilname reicht)'),type:P('STRING','Optional: Button, Hyperlink, TabItem, ListItem, MenuItem, CheckBox, Edit …'),index:P('INTEGER','Bei mehreren Treffern: 0 = bester, 1 = zweiter …'),double:P('BOOLEAN','Doppelklick'),right:P('BOOLEAN','Rechtsklick'),mouse:P('BOOLEAN','Echten Mausklick erzwingen'),wait_seconds:P('NUMBER','Max. Wartezeit auf das Element (Standard 15, bis 60)')},required:['window','name']}},
+ {name:'ui_type',description:'Tippt Text in eine App – optional in ein bestimmtes Feld (per Name) und mit Enter danach.',parameters:{type:'OBJECT',properties:{text:P('STRING','Text'),window:P('STRING','Fenster/App'),field:P('STRING','Optional: Name/Platzhalter des Eingabefelds'),press_enter:P('BOOLEAN','Danach Enter drücken'),append:P('BOOLEAN','Anhängen statt ersetzen')},required:['text']}},
+ {name:'ui_keys',description:'Sendet Tastendrücke an eine App (SendKeys-Syntax): {ENTER}, {TAB}, {ESC}, {F5}, ^c = Strg+C, %{F4} = Alt+F4, +{TAB} = Shift+Tab.',parameters:{type:'OBJECT',properties:{keys:P('STRING','Tasten in SendKeys-Syntax'),window:P('STRING','Optional: Fenster, das vorher in den Vordergrund geholt wird')},required:['keys']}},
+ {name:'ui_click_at',description:'Klickt an Bildschirmkoordinaten (nur wenn ein Element keinen Namen hat, Koordinaten aus ui_snapshot "@x,y").',parameters:{type:'OBJECT',properties:{x:P('INTEGER','X'),y:P('INTEGER','Y'),window:P('STRING','Optional: Fenster vorher nach vorn holen'),double:P('BOOLEAN','Doppelklick'),right:P('BOOLEAN','Rechtsklick')},required:['x','y']}},
+ {name:'spotify_play',description:'Spielt Musik in der Spotify-Desktop-App ab: Song, Album, Künstler oder Playlist per Suchtext (z. B. "Blinding Lights The Weeknd") oder per Spotify-Link. Startet Spotify bei Bedarf. Liefert, was danach läuft.',parameters:{type:'OBJECT',properties:{query:P('STRING','Suchtext (Titel und Künstler) oder Spotify-Link/URI'),type:{type:'STRING',enum:['track','album','artist','playlist'],description:'Art des Ergebnisses (Standard: track)'}},required:['query']}},
+ {name:'spotify_control',description:'Steuert Spotify: status (was läuft gerade), play, pause, toggle, next, previous, volume_up, volume_down, mute.',parameters:{type:'OBJECT',properties:{action:{type:'STRING',enum:['status','play','pause','toggle','next','previous','volume_up','volume_down','mute'],description:'Aktion'},steps:P('INTEGER','Lautstärke-Schritte à 2 % (Standard 5)')},required:['action']}}
+];
+const NEEDS_CONFIRM={run_command:1,write_file:1,delete_item:1};
+const LABELS={run_command:'PowerShell',read_file:'Datei lesen',write_file:'Datei schreiben',list_directory:'Ordner ansehen',open_item:'Öffnen',delete_item:'In Papierkorb',system_info:'Systeminfo',clipboard_read:'Zwischenablage lesen',clipboard_write:'In Zwischenablage',list_add:'Liste',list_remove:'Liste',list_show:'Listen',reminder_add:'Erinnerung',reminder_list:'Erinnerungen',reminder_clear:'Erinnerungen löschen',spotify_play:'Spotify',spotify_control:'Spotify',app_launch:'App starten',ui_windows:'Fenster',ui_snapshot:'App ansehen',ui_click:'Klicken',ui_type:'Tippen',ui_keys:'Tasten',ui_click_at:'Klicken'};
+
+function localIso(d=new Date()){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;}
+function systemPrompt(){
+  const e=S.env||{};
+  return `Du bist GPTProp, ein hilfsbereiter, kompetenter Desktop-Assistent auf dem Windows-PC von ${e.user||'dem Nutzer'}. Antworte immer auf Deutsch, freundlich, klar und knapp. Nutze einfaches Markdown (fett, Listen, Codeblöcke).
+Du hast über Werkzeuge vollen Zugriff auf den PC: PowerShell ausführen, Dateien lesen/schreiben/auflisten/in den Papierkorb verschieben, Dateien/Ordner/Webseiten/Apps öffnen, Zwischenablage, Systeminfos sowie die Listen und Erinnerungen von GPTProp.
+Regeln:
+- Handle selbstständig mit Werkzeugen, statt dem Nutzer Befehle zum Abtippen zu geben. Mehrere Schritte nacheinander sind erlaubt.
+- Sei schnell: so wenige Werkzeug-Schritte wie möglich, kurze Antworten, keine unnötigen Rückfragen.
+- Programme starten: app_launch mit dem Namen aus dem Startmenü (z. B. "NoRisk Launcher"). Alternativ open_item mit App-Protokoll (spotify:, discord:, steam:, ms-settings:). Webseiten: open_item mit der URL.
+- In Apps etwas tun (z. B. "starte Minecraft im NoRisk Launcher"): 1) app_launch, 2) direkt ui_click mit dem naheliegenden Knopfnamen (z. B. "Spielen", "Play", "Starten") – ui_click wartet selbst, bis die App geladen ist. 3) Klappt das nicht, ui_snapshot ansehen und den passenden Knopf wählen. Felder: ui_type, Tastenkürzel: ui_keys. Schau mit ui_snapshot nach, ob es geklappt hat, wenn unklar.
+- Keine interaktiven Befehle (Read-Host, pause, Editor-Prompts). Lange Ausgaben begrenzen (Select-Object -First, Format-Table -AutoSize | Out-String -Width 200).
+- Frag NICHT nach Erlaubnis und bitte nicht um Bestätigung: Was der Nutzer verlangt, führst du sofort aus – auch Öffnen, Schließen, Herunterfahren, Neustarten, Abmelden, Installieren oder Löschen. Sag danach kurz, was du getan hast.
+- Herunterfahren: run_command "shutdown /s /t 5", Neustart: "shutdown /r /t 5", Abmelden: "shutdown /l", Energiesparen: "rundll32.exe powrprof.dll,SetSuspendState 0,1,0". Abbrechen: "shutdown /a".
+- Nur wenn eine Anfrage wirklich unklar ist (z. B. welche Datei gemeint ist), kurz nachfragen. Lösche bevorzugt mit delete_item (Papierkorb).
+- Schlägt etwas fehl, analysiere den Fehler und versuche einen anderen Weg. Erfinde keine Ergebnisse.
+- Musik: Für Songs/Alben/Künstler/Playlists immer spotify_play nutzen (nicht open_item). Pause, weiter, lauter usw.: spotify_control.
+- Erinnerungen: reminder_add mit datetime (lokale Zeit) oder in_minutes. Listen: list_add/list_remove/list_show.
+- Fasse am Ende kurz zusammen, was du getan hast.
+Kontext: Jetzt ist ${new Date().toLocaleString('de-DE',{dateStyle:'full',timeStyle:'short'})} (lokal ${localIso()}). System: ${e.os||'Windows'}. Benutzerordner: ${e.home||'?'}; Desktop: ${e.desktop||'?'}; Downloads: ${e.downloads||'?'}; Dokumente: ${e.documents||'?'}.`;
+}
+
+async function localTool(name,a){
+  if(name==='list_add'){
+    const items=Array.isArray(a.items)?a.items:(a.items?[a.items]:[]);
+    if(!items.length)return{error:'Keine Einträge angegeben.'};
+    let k='';const added=[],dups=[];
+    for(const it of items){const r=listAdd(String(it),a.list);k=r.k;(r.dup?dups:added).push(String(it));}
+    return{list:k,added,already_there:dups,items:state.lists[k]};
+  }
+  if(name==='list_remove'){const r=listRemove(a.item,a.list);return r.error?{error:r.error,list:r.k}:{ok:true,list:r.k,items:state.lists[r.k]};}
+  if(name==='list_show')return{lists:state.lists};
+  if(name==='reminder_add'){
+    let at=null;
+    if(a.in_minutes!=null&&isFinite(+a.in_minutes)&&+a.in_minutes>0)at=Date.now()+(+a.in_minutes)*60000;
+    else if(a.datetime){const d=new Date(String(a.datetime).trim().replace(' ','T'));if(!isNaN(d))at=d.getTime();}
+    if(!at)return{error:'Ungültige Zeit. Nutze datetime (YYYY-MM-DDTHH:MM) oder in_minutes.'};
+    if(at<=Date.now())return{error:'Der Zeitpunkt liegt in der Vergangenheit.'};
+    const r=reminderAdd(at,a.task);return{ok:true,task:r.task,at:localIso(new Date(at))};
+  }
+  if(name==='reminder_list')return{reminders:[...state.reminders].sort((x,y)=>x.at-y.at).map(r=>({task:r.task,at:localIso(new Date(r.at))}))};
+  if(name==='reminder_clear'){const n=state.reminders.length;clearAllReminders();return{ok:true,deleted:n};}
+  return null;
+}
+
+function toolSummary(name,a){
+  if(name==='run_command')return esc(String(a.command||'').split('\n')[0].slice(0,140));
+  if(a.path)return esc(a.path);if(a.target)return esc(a.target);
+  if(name==='list_add')return esc(`${(a.items||[]).join?.(', ')||''} → ${a.list||''}`);
+  if(name==='reminder_add')return esc(a.task||'');
+  if(name==='app_launch')return esc(a.name||'');
+  if(name==='ui_snapshot')return esc(a.window||'');
+  if(name==='ui_click')return esc(`„${a.name||''}“ in ${a.window||''}`);
+  if(name==='ui_type')return esc(String(a.text||'').slice(0,60));
+  if(name==='ui_keys')return esc(a.keys||'');
+  if(name==='ui_click_at')return esc(`${a.x}, ${a.y}`);
+  if(name==='spotify_play')return esc(a.query||'');
+  if(name==='spotify_control')return esc(a.action||'');
+  return '';
+}
+function toolView(name,a){
+  const d=document.createElement('details');d.className='tool';
+  d.innerHTML=`<summary><span class="st run"></span><span class="lbl"><b>${esc(LABELS[name]||name)}</b> ${toolSummary(name,a)}</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></summary><div class="k">Eingabe</div><pre></pre>`;
+  d.querySelector('pre').textContent=name==='run_command'?String(a.command||''):JSON.stringify(a,null,2);
+  append(d);return d;
+}
+function toolDone(d,res){
+  const err=!!(res&&(res.error||(res.exit_code!=null&&res.exit_code!==0)||res.timed_out||res.declined));
+  const st=d.querySelector('.st');st.className='st '+(err?'err':'ok');st.textContent=err?'✕':'✓';
+  const k=document.createElement('div');k.className='k';k.textContent='Ergebnis';
+  const p=document.createElement('pre');
+  if(res&&('stdout' in res||'stderr' in res)){p.textContent=[res.stdout,res.stderr?'[Fehler]\n'+res.stderr:'',res.hinweis||'',res.exit_code!=null?`(exit ${res.exit_code})`:''].filter(Boolean).join('\n')||'(keine Ausgabe)';}
+  else p.textContent=JSON.stringify(res,null,2);
+  d.append(k,p);
+}
+
+function askConfirm(name,a){
+  return new Promise(resolve=>{
+    const titles={run_command:'GPTProp möchte einen PowerShell-Befehl ausführen',write_file:'GPTProp möchte eine Datei schreiben',delete_item:'GPTProp möchte etwas in den Papierkorb verschieben'};
+    const c=document.createElement('div');c.className='confirm';
+    c.innerHTML=`<h5>⚠️ ${titles[name]}</h5><pre></pre><div class="row"><button class="btn warn" data-a="yes">Ausführen</button><button class="btn" data-a="no">Ablehnen</button><button class="btn ghost" data-a="always">Für diese Sitzung immer erlauben</button></div>`;
+    let body=name==='run_command'?String(a.command||''):name==='write_file'?`${a.path}${a.append?' (anhängen)':''}\n\n${String(a.content||'').slice(0,3000)}`:String(a.path||'');
+    c.querySelector('pre').textContent=body;
+    const finish=v=>{c.classList.add('done');c.querySelectorAll('button').forEach(b=>b.disabled=true);c.querySelector('.row').insertAdjacentHTML('beforeend',`<span style="font-size:13px;color:var(--muted);align-self:center">${v?'✓ erlaubt':'✕ abgelehnt'}</span>`);resolve(v);};
+    c.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b||b.disabled)return;
+      if(b.dataset.a==='always'){sessionAllow=true;finish(true);}else finish(b.dataset.a==='yes');});
+    pendingConfirm=()=>finish(false);
+    append(c);scrollDown(true);c.querySelector('button[data-a="yes"]').focus();
+  }).finally(()=>{pendingConfirm=null;});
+}
+let pendingConfirm=null;
+
+async function execTool(name,a,myRun){
+  a=a&&typeof a==='object'?a:{};
+  if(NEEDS_CONFIRM[name]&&S.confirmActions&&!sessionAllow){
+    const ok=await askConfirm(name,a);
+    if(myRun!==runId)return{declined:true,error:'Abgebrochen.'};
+    if(!ok){const d=toolView(name,a);const r={declined:true,error:'Der Nutzer hat diese Aktion abgelehnt.'};toolDone(d,r);return r;}
+  }
+  const d=toolView(name,a);
+  let res;
+  try{res=await localTool(name,a);if(res===null)res=await api.tool(name,a);}
+  catch(e){res={error:String(e&&e.message||e)};}
+  if(res==null||typeof res!=='object')res={result:res};
+  toolDone(d,res);
+  return res;
+}
+
+function trimHistory(){
+  // Nur die Bilder der letzten 2 Nachrichten mitschicken – ältere durch Platzhalter ersetzen (spart Zeit & Kontingent)
+  let seen=0;
+  for(let i=convo.length-1;i>=0;i--){
+    const c=convo[i];
+    if(c.role!=='user'||!c.parts.some(p=>p.inlineData))continue;
+    if(++seen>2)c.parts=c.parts.map(p=>p.inlineData?{text:'[früher gesendetes Bild]'}:p);
+  }
+  const MAX=30;
+  if(convo.length<=MAX)return;
+  let i=convo.length-MAX;
+  while(i<convo.length&&!(convo[i].role==='user'&&convo[i].parts.some(p=>typeof p.text==='string')))i++;
+  if(i<convo.length)convo=convo.slice(i);
+}
+function closeHistory(start){
+  // Verlauf gültig halten: muss mit einer Modell-Antwort ohne offene Werkzeugaufrufe enden
+  const last=convo[convo.length-1];
+  if(!last||convo.length<=start){convo.length=Math.min(convo.length,start);return;}
+  if(last.role==='model'&&last.parts.some(p=>p.functionCall)){convo.length=start;return;}
+  if(last.role==='user'){
+    if(convo.length===start+1)convo.length=start;
+    else convo.push({role:'model',parts:[{text:'(Vorgang abgebrochen)'}]});
+  }
+}
+
+async function runAgent(text,images){
+  const myRun=++runId;
+  const start=convo.length;currentStart=start;
+  const imgParts=(images||[]).map(i=>({inlineData:{mimeType:i.mime,data:i.data}}));
+  convo.push({role:'user',parts:[...imgParts,{text}]});
+  setBusy(true);
+  try{
+    for(let step=0;step<20;step++){
+      showTyping();
+      const res=await api.generate({systemInstruction:{parts:[{text:systemPrompt()+(voiceTurn?'\nDieser Befehl kam per Sprache und deine Antwort wird vorgelesen: Antworte in höchstens 1–2 kurzen, natürlich gesprochenen Sätzen, ohne Listen, Markdown oder Links.':'')}]},contents:convo,tools:[{functionDeclarations:DECLS}]});
+      if(myRun!==runId)return; // gestoppt: stopRun hat den Verlauf schon bereinigt
+      hideTyping();
+      if(!res||!res.ok){
+        closeHistory(start);
+        const keyErr=res&&(res.code==='BAD_KEY'||res.code==='NO_KEY');
+        reply(keyErr?'Mit dem Gemini-Key stimmt etwas nicht.':'Gemini ist gerade nicht erreichbar.',esc(res&&res.error||'Unbekannter Fehler')+(keyErr?'<br><a href="#" data-open-settings>Einstellungen öffnen</a>':''),'#f87171');
+        return;
+      }
+      if(res.model)setModelLabel(res.model);
+      const cand=res.data&&res.data.candidates&&res.data.candidates[0];
+      const parts=cand&&cand.content&&Array.isArray(cand.content.parts)?cand.content.parts:[];
+      if(!parts.length){
+        closeHistory(start);
+        const why=res.data&&res.data.promptFeedback&&res.data.promptFeedback.blockReason||cand&&cand.finishReason||'leere Antwort';
+        reply('Darauf habe ich keine Antwort bekommen.',`Grund: ${esc(why)}. Formuliere es bitte etwas anders.`,'#f59e0b');
+        return;
+      }
+      convo.push({role:'model',parts});
+      const txt=parts.filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text).join('').trim();
+      if(txt)addMessage(md(txt),'assistant');
+      const calls=parts.filter(p=>p.functionCall);
+      if(!calls.length){if(!txt)reply('Erledigt.');return;}
+      const responses=[];
+      for(const c of calls){
+        const fc=c.functionCall;
+        const r=await execTool(fc.name,fc.args,myRun);
+        if(myRun!==runId)return;
+        const fr={name:fc.name,response:{result:r}};if(fc.id)fr.id=fc.id;
+        responses.push({functionResponse:fr});
+      }
+      convo.push({role:'user',parts:responses});
+    }
+    closeHistory(start);
+    reply('Ich habe nach vielen Schritten angehalten.','Sag „weiter“, wenn ich fortfahren soll.','#f59e0b');
+  }catch(e){
+    if(myRun!==runId)return;
+    hideTyping();closeHistory(start);
+    reply('Da ist etwas schiefgelaufen.',esc(String(e&&e.message||e)),'#f87171');
+  }finally{
+    if(myRun===runId){setBusy(false);trimHistory();}
+  }
+}
+
+/* ================= UI ================= */
+function setBusy(b){
+  busy=b;
+  sendBtn.innerHTML=b?ICON_STOP:ICON_SEND;sendBtn.classList.toggle('stop',b);
+  sendBtn.title=b?'Stoppen':'Senden';sendBtn.setAttribute('aria-label',sendBtn.title);
+  $('statusDot').className='dot'+(b?' busy':S.hasKey?'':' off');
+}
+function stopRun(){
+  if(!busy)return;
+  runId++;hideTyping();
+  convo.length=Math.min(convo.length,currentStart); // abgebrochene Runde komplett verwerfen
+  if(pendingConfirm)pendingConfirm();
+  reply('Gestoppt.');
+  setBusy(false);
+}
+function setModelLabel(m){$('statusText').textContent=m?`Gemini · ${m}`:'Gemini · automatisch';}
+function refreshStatus(){
+  $('statusDot').className='dot'+(busy?' busy':S.hasKey?'':' off');
+  if(S.hasKey)setModelLabel(S.model!=='auto'?S.model.replace(/^models\//,''):S.lastModel);
+  else $('statusText').textContent='Offline-Modus · kein Key';
+}
+
+function renderWelcome(){
+  chatMessages.innerHTML='';
+  const w=document.createElement('div');w.className='welcome';w.id='welcome';
+  const sugg=S.hasKey?[
+    ['Speicherplatz prüfen','Wie viel ist auf meinen Laufwerken frei?'],
+    ['Desktop aufräumen','Was liegt auf meinem Desktop? Gib mir einen Überblick.'],
+    ['Musik','Spiel Blinding Lights auf Spotify'],
+    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche']
+  ]:[
+    ['App starten','Öffne Spotify'],
+    ['Einkaufsliste','Setze Milch auf meine Einkaufsliste'],
+    ['Erinnerung','Erinnere mich in 20 Minuten an die Wäsche'],
+    ['Listen ansehen','Zeige Einkaufsliste']
+  ];
+  w.innerHTML=`<div class="big"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-5 1-8 4-9 1 4-1 7-4 9zM12 12c4 3 4 6 2 9-4-1-5-5-2-9zM12 12c-5-1-8 0-9 3 3 2 7 1 9-3z"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></div>
+  <h2>Moin${S.env&&S.env.user?', '+esc(S.env.user):''}!</h2>
+  <p>${S.hasKey?'Ich bin GPTProp – dein KI-Assistent mit Zugriff auf deinen PC. Sag mir einfach, was ich erledigen soll.':'Ich bin GPTProp. Ich kann Apps öffnen, Listen führen und dich erinnern.'}</p>
+  <div class="sugg">${sugg.map(([t,c])=>`<button data-prompt="${esc(c)}"><b>${esc(t)}</b><span>${esc(c)}</span></button>`).join('')}</div>
+  ${S.hasKey?'':'<div class="keynote"><span>✨ Mit einem kostenlosen Gemini-Key kann ich frei antworten und deinen PC steuern.</span><button class="btn warn" data-open-settings>Key eintragen</button></div>'}`;
+  chatMessages.appendChild(w);
+}
+
+function autosize(){userInput.style.height='37px';const h=userInput.scrollHeight;userInput.style.height=Math.min(h,180)+'px';userInput.style.overflowY=h>180?'auto':'hidden';}
+function handleUserMessage(fromVoice){
+  if(busy)return;
+  const imgs=pendingImages.slice();
+  let text=userInput.value.trim();
+  if(!text&&!imgs.length)return;
+  voiceTurn=fromVoice===true;
+  if(!voiceTurn)try{speechSynthesis.cancel();}catch(e){}
+  if(imgs.length){
+    // Mit Bild immer an die KI (Fast-Wege überspringen)
+    if(!text)text='Was ist auf dem Bild zu sehen?';
+    addUserWithImages(text,imgs);userInput.value='';autosize();clearImages();
+    if(!S.hasKey){reply('Bilder kann ich nur mit Gemini-Key ansehen.','Trag einen kostenlosen Key in den <a href="#" data-open-settings>Einstellungen</a> ein.','#f59e0b');return;}
+    runAgent(text,imgs);return;
+  }
+  addMessage(esc(text),'user');userInput.value='';autosize();
+  if(musicFastPath(text))return;
+  // Blitz-Weg: "Öffne Spotify" & Co. sofort lokal erledigen, ohne auf die KI zu warten
+  const m=text.match(/^(?:öffne|starte|open)\s+(.{2,30}?)[.!]?$/i);
+  if(S.hasKey&&m&&APPS.some(a=>a.k.some(k=>m[1].toLowerCase()===k||m[1].toLowerCase()===a.n.toLowerCase()))){openApp(text);return;}
+  // "Öffne NoRisk Launcher": einfache App-Starts direkt über das Startmenü (ohne KI-Wartezeit)
+  if(m&&!/\s(im|in|und|mit|auf|dann|bei|von)\s/i.test(' '+m[1]+' ')&&m[1].split(/\s+/).length<=4){quickLaunch(text,m[1]);return;}
+  if(S.hasKey)runAgent(text);else offlineLogic(text);
+}
+async function quickLaunch(text,name){
+  currentStart=convo.length;setBusy(true);
+  const d=toolView('app_launch',{name});
+  let r;try{r=await api.tool('app_launch',{name});}catch(e){r={error:String(e&&e.message||e)};}
+  toolDone(d,r||{});setBusy(false);
+  if(r&&r.ok){reply(`🚀 <strong>${esc(r.launched)}</strong> wird gestartet.`);return;}
+  // Nicht im Startmenü gefunden: KI (mit Key) oder Offline-Logik versuchen
+  if(S.hasKey)runAgent(text);else offlineLogic(text);
+}
+
+/* ================= Bilder ================= */
+let pendingImages=[];
+const MAX_IMAGES=4,MAX_SIDE=1600;
+function readAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(file);});}
+function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Bild konnte nicht gelesen werden.'));i.src=src;});}
+async function addImageFile(file){
+  if(!file||!/^image\//.test(file.type))return false;
+  if(pendingImages.length>=MAX_IMAGES){flashHint(`Höchstens ${MAX_IMAGES} Bilder pro Nachricht.`);return false;}
+  if(file.size>40*1024*1024){flashHint('Bild ist zu groß (max. 40 MB).');return false;}
+  try{
+    const src=await readAsDataURL(file);
+    const img=await loadImage(src);
+    // Verkleinern & als JPEG senden: schneller und spart Gemini-Kontingent
+    const scale=Math.min(1,MAX_SIDE/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+    const url=cv.toDataURL('image/jpeg',0.85);
+    pendingImages.push({mime:'image/jpeg',data:url.split(',')[1],url,name:file.name||'Bild'});
+    renderAttach();return true;
+  }catch(e){flashHint(String(e&&e.message||e));return false;}
+}
+function renderAttach(){
+  const s=$('attachStrip');
+  s.innerHTML=pendingImages.map((p,i)=>`<div class="thumb" title="${esc(p.name)}"><img src="${p.url}" alt=""><button data-rm="${i}" title="Entfernen" aria-label="Bild entfernen">×</button></div>`).join('');
+  s.classList.toggle('on',pendingImages.length>0);
+  userInput.placeholder=pendingImages.length?'Frag etwas zum Bild… (oder einfach senden)':'Nachricht an GPTProp…';
+}
+function clearImages(){pendingImages=[];renderAttach();}
+function flashHint(t){const old=userInput.placeholder;userInput.placeholder=t;setTimeout(()=>{if(userInput.placeholder===t)renderAttach();},2500);}
+function addUserWithImages(text,imgs){
+  hideWelcome();
+  const d=document.createElement('div');d.className='msg user';
+  d.innerHTML=`<div class="stack"><div class="imgs">${imgs.map(i=>`<img src="${i.url}" alt="Bild">`).join('')}</div><div class="bubble">${esc(text)}</div></div>`;
+  append(d);scrollDown(true);
+}
+$('attachBtn').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=async e=>{for(const f of [...e.target.files])await addImageFile(f);e.target.value='';userInput.focus();};
+$('attachStrip').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(!b)return;pendingImages.splice(+b.dataset.rm,1);renderAttach();});
+// Strg+V: Bilder aus der Zwischenablage (z. B. Screenshot mit Win+Shift+S)
+userInput.addEventListener('paste',async e=>{
+  const files=[...(e.clipboardData&&e.clipboardData.items||[])].filter(i=>i.kind==='file'&&/^image\//.test(i.type)).map(i=>i.getAsFile()).filter(Boolean);
+  if(!files.length)return;
+  e.preventDefault();
+  for(const f of files)await addImageFile(f);
+});
+// Drag & Drop ins Fenster
+let dragDepth=0;
+const hasFiles=e=>[...(e.dataTransfer&&e.dataTransfer.types||[])].includes('Files');
+window.addEventListener('dragenter',e=>{if(!hasFiles(e))return;e.preventDefault();dragDepth++;$('dropzone').classList.add('on');});
+window.addEventListener('dragover',e=>{if(!hasFiles(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';});
+window.addEventListener('dragleave',e=>{if(!hasFiles(e))return;if(--dragDepth<=0){dragDepth=0;$('dropzone').classList.remove('on');}});
+window.addEventListener('drop',async e=>{
+  if(!hasFiles(e))return;
+  e.preventDefault();dragDepth=0;$('dropzone').classList.remove('on');
+  const files=[...e.dataTransfer.files];
+  const imgs=files.filter(f=>/^image\//.test(f.type));
+  if(!imgs.length){flashHint('Nur Bilder können angehängt werden.');return;}
+  for(const f of imgs)await addImageFile(f);
+  userInput.focus();
+});
+// Klick auf Bild im Chat = groß anzeigen
+chatMessages.addEventListener('click',e=>{const i=e.target.closest('.msg.user .imgs img');if(!i)return;$('lightbox').querySelector('img').src=i.src;$('lightbox').classList.add('on');});
+$('lightbox').onclick=()=>$('lightbox').classList.remove('on');
+
+/* Musik-Befehle sofort lokal ausführen (ohne KI-Wartezeit) */
+function musicFastPath(text){
+  const raw=text.trim().replace(/[.!?]+$/,''),l=raw.toLowerCase();
+  let act=null,q=null;
+  if(/^(pause|pausiere|pausier|stopp?|stop)(\s+(die\s+)?(musik|spotify|lied|song))?$/.test(l)||/^(musik|spotify)\s+(pausieren|stoppen|aus)$/.test(l))act='pause';
+  else if(/^(nächstes|nächster|naechstes|skip|next)(\s+(lied|song|titel|track))?$/.test(l)||/^(lied|song)\s+überspringen$/.test(l))act='next';
+  else if(/^(vorheriges|vorheriger|previous)(\s+(lied|song|titel|track))?$/.test(l))act='previous';
+  else if(/^(was\s+läuft|welches\s+lied|welcher\s+song|was\s+ist\s+das\s+für\s+ein\s+(lied|song))/.test(l))act='status';
+  else if(/^(lauter|musik\s+lauter)$/.test(l))act='volume_up';
+  else if(/^(leiser|musik\s+leiser)$/.test(l))act='volume_down';
+  else if(/^(spiel|spiele|play)(\s+(musik|weiter|ab))?$/.test(l)||/^(musik|spotify)\s+(an|weiter|fortsetzen)$/.test(l))act='play';
+  else{
+    const mm=raw.match(/^(?:spiel|spiele|play|hör|höre)\s+(?:mal\s+)?(?:den\s+song\s+|das\s+lied\s+)?(.+?)(\s+(?:auf|in|bei|mit|über)\s+spotify)?(?:\s+ab)?$/i);
+    // Mit Key nur bei ausdrücklichem "Spotify" (sonst entscheidet die KI, z. B. bei "spiel Minecraft")
+    if(mm&&(mm[2]||!S.hasKey))q=mm[1].replace(/\s+von\s+/i,' ').trim();
+  }
+  if(!act&&!q)return false;
+  runMusic(act,q);
+  return true;
+}
+async function runMusic(act,q){
+  const name=q?'spotify_play':'spotify_control',args=q?{query:q}:{action:act};
+  const d=toolView(name,args);
+  let r;try{r=await api.tool(name,args);}catch(e){r={error:String(e&&e.message||e)};}
+  toolDone(d,r||{});
+  if(!r||r.error){reply('Das hat mit Spotify nicht geklappt.',esc(r&&r.error||'Unbekannter Fehler')+(r&&r.hint?'<br>'+esc(r.hint):''),'#f87171');return;}
+  const np=r.title?`${r.artist?r.artist+' – ':''}${r.title}`:(r.now_playing||'');
+  if(q){
+    if(r.opened_search)reply(`Ich habe die Spotify-Suche nach <strong>${esc(q)}</strong> geöffnet – klick dort auf Play.`,'Damit ich Songs automatisch abspielen kann, trag in den <a href="#" data-open-settings>Einstellungen</a> einmalig deinen kostenlosen Spotify-Zugang ein.','#38bdf8');
+    else if(r.played)reply(`▶️ Spielt jetzt: <strong>${esc(np||r.requested)}</strong>`);
+    else reply(`Ich habe <strong>${esc(r.requested||q)}</strong> an Spotify geschickt.`,'Falls es nicht sofort startet, ist Spotify vielleicht noch am Laden.','#38bdf8');
+    return;
+  }
+  const txt={pause:'⏸️ Pausiert.',play:'▶️ Läuft wieder.',next:'⏭️ Nächster Song.',previous:'⏮️ Vorheriger Song.',volume_up:'🔊 Lauter.',volume_down:'🔉 Leiser.',status:'🎵 Läuft gerade:'}[act]||'Erledigt.';
+  if(r.running===false){reply('Spotify läuft gerade nicht.');return;}
+  reply(np&&act!=='volume_up'&&act!=='volume_down'?`${txt} <strong>${esc(np)}</strong>`:txt);
+}
+
+function newChat(){
+  if(busy)stopRun();
+  runId++;convo=[];sessionAllow=false;renderWelcome();userInput.focus();
+}
+
+/* ================= Einstellungen ================= */
+const drawer=$('drawer'),scrim=$('scrim');
+function setStatus(id,cls,text){const e=$(id);e.className='status '+cls;e.textContent=text;}
+async function openSettings(){
+  drawer.classList.add('open');scrim.classList.add('open');drawer.setAttribute('aria-hidden','false');
+  await refreshSettings();
+  setTimeout(()=>$('keyInput').focus(),200);
+  if(S.hasKey)loadModels(false);
+}
+function closeSettings(){if(hkRec)stopHkRec();drawer.classList.remove('open');scrim.classList.remove('open');drawer.setAttribute('aria-hidden','true');userInput.focus();}
+async function refreshSettings(){
+  S=await api.getSettings();
+  $('keyInput').placeholder=S.hasKey?`Gespeichert (${S.keyMasked}) – zum Ersetzen neu einfügen`:'AIza…';
+  $('confirmToggle').checked=!!S.confirmActions;$('autostartToggle').checked=!!S.autostart;
+  $('voiceToggle').checked=!!S.voice;$('voiceSpeakToggle').checked=S.voiceSpeak!==false;$('voiceSens').value=S.voiceSensitivity||'normal';
+  fillVoices();
+  renderHotkeys();
+  $('autoUpdToggle').checked=S.autoUpdate!==false;showUpdate(S.update);
+  showVoiceState(S.voiceState);
+  $('verText').textContent=`GPTProp ${S.version}`;
+  $('testKeyBtn').disabled=!S.hasKey;$('removeKeyBtn').disabled=!S.hasKey;
+  if(!$('keyStatus').textContent)setStatus('keyStatus','info',S.hasKey?'Ein Key ist gespeichert (verschlüsselt).':'Noch kein Key gespeichert – GPTProp läuft im Offline-Modus.');
+  const sel=$('modelSelect');
+  if(S.model!=='auto'&&![...sel.options].some(o=>o.value===S.model)){const o=document.createElement('option');o.value=S.model;o.textContent=S.model.replace(/^models\//,'');sel.appendChild(o);}
+  sel.value=S.model;
+  refreshSpotifyUi();
+  refreshStatus();
+}
+async function loadModels(force){
+  setStatus('modelStatus','info','Lade verfügbare Modelle…');
+  const r=await api.listModels(force);
+  if(!r.ok){setStatus('modelStatus','err','Modelle konnten nicht geladen werden: '+r.error);return;}
+  const sel=$('modelSelect');const cur=S.model;
+  sel.innerHTML='<option value="auto">Automatisch (empfohlen)</option>'+r.models.map(m=>`<option value="${esc(m.name)}">${esc(m.label)} (${esc(m.name.replace(/^models\//,''))})</option>`).join('');
+  if(cur!=='auto'&&!r.models.some(m=>m.name===cur)){const o=document.createElement('option');o.value=cur;o.textContent=cur.replace(/^models\//,'')+' (nicht verfügbar)';sel.appendChild(o);}
+  sel.value=cur;
+  setStatus('modelStatus','ok',`${r.models.length} passende Modelle gefunden. Reihenfolge bei „Automatisch“: ${r.models.slice(0,4).map(m=>m.name.replace(/^models\//,'')).join(' → ')}${r.models.length>4?' …':''}`);
+}
+async function saveKey(){
+  const k=$('keyInput').value.trim();
+  if(!k){setStatus('keyStatus','err','Bitte zuerst einen Key eingeben.');return;}
+  if(/\s/.test(k)){setStatus('keyStatus','err','Der Key darf keine Leerzeichen enthalten.');return;}
+  $('saveKeyBtn').disabled=true;setStatus('keyStatus','info','Prüfe Key bei Google…');
+  const t=await api.testKey(k);
+  const hardFail=!t.ok&&(t.status===400||t.status===401||t.status===403);
+  if(hardFail){setStatus('keyStatus','err','Key ungültig: '+t.error);$('saveKeyBtn').disabled=false;return;}
+  await api.setSettings({apiKey:k});
+  $('keyInput').value='';$('keyInput').type='password';
+  await refreshSettings();
+  setStatus('keyStatus',t.ok?'ok':'info',t.ok?`✓ Gespeichert. ${t.count} Modelle verfügbar, bestes: ${t.best}.`:`Gespeichert, konnte aber nicht prüfen (${t.error}).`);
+  $('saveKeyBtn').disabled=false;
+  if(t.ok)loadModels(false);
+  if($('welcome'))renderWelcome();
+}
+$('saveKeyBtn').onclick=saveKey;
+$('keyInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
+$('testKeyBtn').onclick=async()=>{setStatus('keyStatus','info','Teste…');const t=await api.testKey('');setStatus('keyStatus',t.ok?'ok':'err',t.ok?`✓ Key funktioniert. ${t.count} Modelle, bestes: ${t.best}.`:'Fehler: '+t.error);};
+$('removeKeyBtn').onclick=async()=>{if(!confirm('Gespeicherten Gemini-Key wirklich entfernen?'))return;await api.setSettings({apiKey:''});setStatus('keyStatus','info','Key entfernt – Offline-Modus aktiv.');await refreshSettings();$('modelSelect').innerHTML='<option value="auto">Automatisch (empfohlen)</option>';setStatus('modelStatus','info','');if($('welcome'))renderWelcome();};
+$('eyeBtn').onclick=()=>{const i=$('keyInput');i.type=i.type==='password'?'text':'password';};
+$('modelSelect').onchange=async e=>{S=await api.setSettings({model:e.target.value});refreshStatus();setStatus('modelStatus','ok',e.target.value==='auto'?'Automatische Auswahl aktiv.':'Fest eingestellt – bei Ausfall wird trotzdem auf andere Modelle ausgewichen.');};
+$('reloadModelsBtn').onclick=()=>{if(!S.hasKey){setStatus('modelStatus','err','Bitte zuerst einen Key speichern.');return;}loadModels(true);};
+$('confirmToggle').onchange=async e=>{S=await api.setSettings({confirmActions:e.target.checked});if(e.target.checked)sessionAllow=false;};
+$('autostartToggle').onchange=async e=>{S=await api.setSettings({autostart:e.target.checked});};
+$('voiceToggle').onchange=async e=>{S=await api.setSettings({voice:e.target.checked});voiceSettingsChanged();};
+$('voiceSpeakToggle').onchange=async e=>{S=await api.setSettings({voiceSpeak:e.target.checked});if(!e.target.checked)try{speechSynthesis.cancel();}catch(x){}};
+$('voiceSens').onchange=async e=>{S=await api.setSettings({voiceSensitivity:e.target.value});};
+$('ttsVoice').onchange=async e=>{S=await api.setSettings({ttsVoice:e.target.value});speechSynthesis.cancel();speak('Hallo, so klinge ich jetzt.',true);};
+$('ttsRate').oninput=e=>{$('ttsRateVal').textContent=(+e.target.value).toFixed(2)+'×';};
+$('ttsRate').onchange=async e=>{S=await api.setSettings({ttsRate:+e.target.value});speechSynthesis.cancel();speak('So schnell spreche ich jetzt.',true);};
+$('ttsTest').onclick=()=>{speechSynthesis.cancel();speak('Hallo! Ich bin GPTProp. Sag einfach Hey Prop, wenn du etwas brauchst.',true);};
+$('clearChatBtn').onclick=()=>{newChat();setStatus('dataStatus','ok','Chat geleert.');};
+$('clearDataBtn').onclick=()=>{if(!confirm('Alle Listen und Erinnerungen löschen?'))return;clearAllReminders();state.lists={};save();setStatus('dataStatus','ok','Listen und Erinnerungen gelöscht.');};
+function refreshSpotifyUi(){
+  $('spIdInput').placeholder=S.hasSpotify?`Gespeichert (${S.spotifyIdMasked}) – zum Ersetzen neu einfügen`:'Client ID';
+  $('spRemoveBtn').disabled=!S.hasSpotify;
+  if(!$('spStatus').textContent)setStatus('spStatus',S.hasSpotify?'ok':'info',S.hasSpotify?'✓ Spotify-Zugang gespeichert – Songs werden automatisch abgespielt.':'Kein Zugang – bei „Spiel …“ wird nur die Spotify-Suche geöffnet.');
+}
+$('spSaveBtn').onclick=async()=>{
+  const id=$('spIdInput').value.trim(),sec=$('spSecretInput').value.trim();
+  if(!id||!sec){setStatus('spStatus','err','Bitte Client ID und Client Secret eingeben.');return;}
+  $('spSaveBtn').disabled=true;setStatus('spStatus','info','Prüfe bei Spotify…');
+  const t=await api.testSpotify(id,sec);
+  $('spSaveBtn').disabled=false;
+  if(!t.ok){setStatus('spStatus','err',t.error);return;}
+  S=await api.setSettings({spotifyId:id,spotifySecret:sec});
+  $('spIdInput').value='';$('spSecretInput').value='';
+  setStatus('spStatus','ok','✓ Gespeichert. Sag z. B. „Spiel Blinding Lights auf Spotify“.');refreshSpotifyUi();
+};
+$('spRemoveBtn').onclick=async()=>{if(!confirm('Spotify-Zugang entfernen?'))return;S=await api.setSettings({spotifyId:'',spotifySecret:''});setStatus('spStatus','info','Spotify-Zugang entfernt.');refreshSpotifyUi();};
+/* Tastenkürzel aufnehmen */
+const HK_LABEL={Control:'Strg',Alt:'Alt',Shift:'Umschalt',Super:'Win',Space:'Leertaste',Up:'↑',Down:'↓',Left:'←',Right:'→',Delete:'Entf',Insert:'Einfg',Home:'Pos1',End:'Ende',PageUp:'Bild↑',PageDown:'Bild↓',Backspace:'Rück',Enter:'Enter',Plus:'+'};
+const accelLabel=a=>a?a.split('+').map(p=>HK_LABEL[p]||p).join(' + '):'aus';
+function keyFromCode(code){
+  let m;
+  if((m=code.match(/^Key([A-Z])$/)))return m[1];
+  if((m=code.match(/^Digit(\d)$/)))return m[1];
+  if((m=code.match(/^F(\d{1,2})$/))&&+m[1]>=1&&+m[1]<=24)return 'F'+m[1];
+  const map={Space:'Space',Tab:'Tab',Enter:'Enter',Backspace:'Backspace',Delete:'Delete',Insert:'Insert',Home:'Home',End:'End',PageUp:'PageUp',PageDown:'PageDown',ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',Minus:'-',Equal:'=',Comma:',',Period:'.',Slash:'/',Semicolon:';',Quote:"'",Backquote:'`',BracketLeft:'[',BracketRight:']',Backslash:'\\'};
+  return map[code]||'';
+}
+function accelFromEvent(e){
+  const k=keyFromCode(e.code);if(!k)return null;
+  const mods=[];if(e.ctrlKey)mods.push('Control');if(e.altKey)mods.push('Alt');if(e.shiftKey)mods.push('Shift');if(e.metaKey)mods.push('Super');
+  return [...mods,k].join('+');
+}
+let hkRec=null;
+function renderHotkeys(){
+  document.querySelectorAll('[data-hk]').forEach(b=>{if(hkRec&&hkRec.btn===b)return;const a=S[b.dataset.hk];b.textContent=accelLabel(a);b.classList.toggle('off',!a);});
+  const st=S.hotkeyStatus||{},bad=Object.entries(st).filter(([,v])=>v);
+  if(!$('hkStatus').dataset.keep)setStatus('hkStatus',bad.length?'err':'info',bad.length?bad.map(([k,v])=>`${k==='hotkeyOpen'?'Öffnen':'Spracheingabe'}: ${v}`).join(' · '):'');
+  const o=S.hotkeyOpen;$('wakeHint').dataset.hk=o?accelLabel(o).replace(/ \+ /g,'+'):'';updateHintLine();
+}
+function updateHintLine(){
+  const hl=document.querySelector('.hintline');if(!hl)return;
+  const o=S.hotkeyOpen?accelLabel(S.hotkeyOpen).replace(/ \+ /g,'+'):'';
+  const first=hl.querySelector('.hkhint');
+  if(first)first.textContent=o?`${o} holt GPTProp nach vorn · `:'';
+}
+async function saveHotkey(name,accel){
+  const r=await api.setSettings({[name]:accel});
+  S=r;
+  const err=r.hotkeyError&&r.hotkeyError[name];
+  $('hkStatus').dataset.keep=err?'1':'';
+  setStatus('hkStatus',err?'err':'ok',err?`„${accelLabel(accel)}“ geht nicht: ${err}`:(accel?`✓ ${name==='hotkeyOpen'?'Öffnen':'Spracheingabe'}: ${accelLabel(accel)}`:'✓ Kürzel ausgeschaltet.'));
+  setTimeout(()=>{$('hkStatus').dataset.keep='';},4000);
+  renderHotkeys();
+}
+async function stopHkRec(){
+  if(!hkRec)return;
+  const {btn}=hkRec;hkRec=null;btn.classList.remove('rec');
+  document.removeEventListener('keydown',hkKeydown,true);
+  await api.resumeHotkeys();renderHotkeys();
+}
+async function hkKeydown(e){
+  if(!hkRec)return;
+  e.preventDefault();e.stopPropagation();
+  if(e.key==='Escape'&&!e.ctrlKey&&!e.altKey&&!e.shiftKey){await stopHkRec();return;}
+  if(['Control','Alt','Shift','Meta','OS','AltGraph'].includes(e.key)){
+    const mods=[];if(e.ctrlKey)mods.push('Strg');if(e.altKey)mods.push('Alt');if(e.shiftKey)mods.push('Umschalt');if(e.metaKey)mods.push('Win');
+    hkRec.btn.textContent=(mods.join(' + ')||'')+' + …';return;
+  }
+  const a=accelFromEvent(e);
+  if(!a){hkRec.btn.textContent='Taste nicht möglich – andere wählen';return;}
+  if(!/[+]/.test(a)&&!/^F\d+$/.test(a)){hkRec.btn.textContent='Bitte mit Strg/Alt/Umschalt/Win kombinieren';return;}
+  const name=hkRec.name;
+  await stopHkRec();
+  await saveHotkey(name,a);
+}
+document.querySelectorAll('[data-hk]').forEach(b=>b.addEventListener('click',async()=>{
+  if(hkRec){const same=hkRec.btn===b;await stopHkRec();if(same)return;}
+  hkRec={btn:b,name:b.dataset.hk};b.classList.add('rec');b.textContent='Kombination drücken…';
+  await api.pauseHotkeys();
+  document.addEventListener('keydown',hkKeydown,true);
+}));
+document.querySelectorAll('[data-hkreset]').forEach(b=>b.onclick=async()=>{await stopHkRec();const n=b.dataset.hkreset;await saveHotkey(n,(S.hotkeyDefaults||{})[n]||'');});
+document.querySelectorAll('[data-hkoff]').forEach(b=>b.onclick=async()=>{await stopHkRec();await saveHotkey(b.dataset.hkoff,'');});
+window.addEventListener('blur',()=>{if(hkRec)stopHkRec();});
+/* Updates */
+function showUpdate(u){
+  u=u||{};S.update=u;
+  const b=$('updBtn'),inst=$('updInstallBtn');
+  const ready=u.state==='ready',avail=u.state==='available';
+  b.hidden=!(ready||avail);
+  b.textContent=ready?`⬆ Update ${u.version} – neu starten`:avail?`⬆ Version ${u.version} verfügbar`:'';
+  inst.hidden=!(ready||avail);
+  inst.textContent=ready?'Neu starten & aktualisieren':'Neue Version herunterladen';
+  const when=u.checkedAt?` (geprüft ${new Date(u.checkedAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})})`:'';
+  const txt={idle:'Noch nicht geprüft.',checking:'Suche nach Updates…',none:`✓ Du hast die neueste Version${when}.`,downloading:`Lade Version ${u.version||''} herunter… ${u.percent||0} %`,ready:`✓ Version ${u.version} ist bereit – einmal neu starten, fertig.`,available:`Version ${u.version} ist verfügbar. ${u.portable?'Die Portable-Version aktualisiert sich nicht selbst – bitte neu herunterladen.':''}`,error:'Update-Prüfung fehlgeschlagen: '+(u.error||'unbekannt')}[u.state]||'';
+  setStatus('updStatus',u.state==='error'?'err':(ready||u.state==='none')?'ok':'info',txt);
+  $('updCheckBtn').disabled=['checking','downloading'].includes(u.state);
+}
+$('autoUpdToggle').onchange=async e=>{S=await api.setSettings({autoUpdate:e.target.checked});};
+$('updCheckBtn').onclick=async()=>{showUpdate({...S.update,state:'checking'});showUpdate(await api.checkUpdate());};
+const doInstall=async()=>{const u=S.update||{};if(u.state==='ready'){$('updBtn').textContent='Installiere…';}await api.installUpdate();};
+$('updInstallBtn').onclick=doInstall;$('updBtn').onclick=doInstall;
+if(api.onUpdateState)api.onUpdateState(showUpdate);
+$('openLogBtn').onclick=async()=>{const r=await api.tool('open_item',{target:S.logFile||''});setStatus('dataStatus',r&&r.ok?'ok':'err',r&&r.ok?'Protokoll geöffnet.':'Noch kein Protokoll vorhanden – schicke zuerst eine Nachricht.');};
+$('closeSettings').onclick=closeSettings;scrim.onclick=closeSettings;
+$('settingsBtn').onclick=openSettings;$('statusPill').onclick=openSettings;
+$('newChatBtn').onclick=newChat;
+
+/* ================= Ereignisse ================= */
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open-settings]');if(o){e.preventDefault();openSettings();return;}
+  const p=e.target.closest('[data-prompt]');if(p&&!busy){userInput.value=p.dataset.prompt;handleUserMessage();}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(drawer.classList.contains('open'))closeSettings();else if(busy)stopRun();}
+});
+sendBtn.addEventListener('click',()=>{if(busy)stopRun();else handleUserMessage();});
+userInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();handleUserMessage();}});
+userInput.addEventListener('input',autosize);
+api.onOpenSettings(openSettings);
+if(api.onProgress)api.onProgress(setProgress);
+
+/* ================= Sprachsteuerung ================= */
+let voiceTurn=false;
+const V={stream:null,ctx:null,node:null,src:null,ring:[],ringSamples:0,rate:48000,cap:null,noise:0.008,opening:null};
+// Angenehmste Stimme zuerst: Katja (natürlich), dann Stefan, dann Hedda
+const VOICE_PREF=[/katja/i,/conrad/i,/amala/i,/stefan/i,/hedda/i];
+function germanVoices(){return speechSynthesis.getVoices().filter(x=>/^de/i.test(x.lang));}
+function pickVoice(){
+  const vs=germanVoices();if(!vs.length)return null;
+  if(S.ttsVoice){const m=vs.find(v=>v.name===S.ttsVoice);if(m)return m;}
+  for(const re of VOICE_PREF){const m=vs.find(v=>re.test(v.name)&&/natural/i.test(v.name))||vs.find(v=>re.test(v.name));if(m)return m;}
+  return vs[0];
+}
+function speak(text,force){
+  try{
+    if(!force&&S.voiceSpeak===false)return;
+    const t=String(text||'').replace(/\p{Extended_Pictographic}/gu,'').replace(/[*_`#>•]/g,'').replace(/https?:\/\/\S+/g,'Link').replace(/\s+/g,' ').trim().slice(0,700);
+    if(!t)return;
+    const v=pickVoice(),rate=S.ttsRate||1.25;
+    // In Sätze teilen: erster Satz startet sofort, lange Texte werden nicht abgeschnitten
+    const parts=t.split(/(?<=[.!?])\s+/);
+    for(const p of parts){
+      if(!p.trim())continue;
+      const u=new SpeechSynthesisUtterance(p.trim());u.lang='de-DE';u.rate=rate;u.pitch=1;
+      if(v)u.voice=v;
+      speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+function fillVoices(){
+  const sel=$('ttsVoice');if(!sel)return;
+  const vs=germanVoices(),cur=pickVoice();
+  sel.innerHTML=vs.length?vs.map(v=>`<option value="${esc(v.name)}">${esc(v.name.replace(/^Microsoft\s+/,'').replace(/\s*-\s*German.*$/,''))}${/natural/i.test(v.name)?' (natürlich)':''}</option>`).join(''):'<option value="">Keine deutsche Stimme gefunden</option>';
+  if(cur)sel.value=cur.name;
+  $('ttsRate').value=S.ttsRate||1.25;$('ttsRateVal').textContent=(+(S.ttsRate||1.25)).toFixed(2)+'×';
+}
+try{speechSynthesis.onvoiceschanged=fillVoices;}catch(e){}
+function ding(up){
+  try{const c=V.ctx||new AudioContext();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);
+    o.frequency.setValueAtTime(up?660:880,c.currentTime);o.frequency.setValueAtTime(up?990:550,c.currentTime+.09);
+    g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);o.start();o.stop(c.currentTime+.26);
+    if(c!==V.ctx)setTimeout(()=>c.close(),500);}catch(e){}
+}
+async function micOpen(){
+  if(V.stream)return true;
+  if(V.opening)return V.opening;
+  V.opening=(async()=>{
+    try{V.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});}
+    catch(e){V.stream=null;return false;}
+    V.ctx=new AudioContext();try{await V.ctx.resume();}catch(e){}
+    V.rate=V.ctx.sampleRate;
+    V.src=V.ctx.createMediaStreamSource(V.stream);
+    V.node=V.ctx.createScriptProcessor(4096,1,1);
+    V.node.onaudioprocess=e=>onAudio(e.inputBuffer.getChannelData(0));
+    V.src.connect(V.node);V.node.connect(V.ctx.destination);
+    return true;
+  })();
+  const ok=await V.opening;V.opening=null;return ok;
+}
+function micClose(){
+  try{if(V.node)V.node.disconnect();if(V.src)V.src.disconnect();if(V.stream)V.stream.getTracks().forEach(t=>t.stop());if(V.ctx)V.ctx.close();}catch(e){}
+  Object.assign(V,{stream:null,ctx:null,node:null,src:null,ring:[],ringSamples:0});
+}
+function onAudio(data){
+  const buf=new Float32Array(data);
+  let sum=0;for(let i=0;i<buf.length;i++)sum+=buf[i]*buf[i];
+  const rms=Math.sqrt(sum/buf.length);
+  // Puffer der letzten 3 Sekunden (für "Hey Prop, öffne …" in einem Satz)
+  V.ring.push(buf);V.ringSamples+=buf.length;
+  while(V.ring.length>1&&V.ringSamples-V.ring[0].length>V.rate*3){V.ringSamples-=V.ring.shift().length;}
+  const c=V.cap;
+  if(!c){if(rms<0.05)V.noise=V.noise*0.98+rms*0.02;return;}
+  c.chunks.push(buf);
+  const now=performance.now(),thr=Math.max(0.012,V.noise*3);
+  if(rms>thr){c.loudMs+=buf.length/V.rate*1000;if(c.loudMs>180)c.speech=true;c.last=now;}
+  else if(!c.speech)V.noise=V.noise*0.9+rms*0.1;
+  const bars=document.querySelectorAll('#bars i');bars.forEach((b,i)=>{b.style.height=Math.max(4,Math.min(22,rms*400*(0.6+((i*7)%5)/6)))+'px';});
+  if(c.speech&&now-c.last>1200)finishCapture(true);
+  else if(!c.speech&&now-c.start>6000)finishCapture(false);
+  else if(now-c.start>15000)finishCapture(true);
+}
+async function voiceListen(preSec){
+  if(V.cap)return;
+  if(!S.hasKey){reply('Für Sprachbefehle brauche ich einen Gemini-Key.','Trag ihn in den <a href="#" data-open-settings>Einstellungen</a> ein.','#f59e0b');return;}
+  const ok=await micOpen();
+  if(!ok){reply('Ich komme nicht an dein Mikrofon.','Prüfe in Windows: Einstellungen → Datenschutz → Mikrofon → „Desktop-Apps den Zugriff erlauben“.','#f87171');return;}
+  try{speechSynthesis.cancel();}catch(e){}
+  // Vorlauf aus dem Puffer übernehmen (der Befehl kann direkt nach "Hey Prop" begonnen haben)
+  const pre=[];let n=0;
+  for(let i=V.ring.length-1;i>=0&&n<V.rate*preSec;i--){pre.unshift(V.ring[i]);n+=V.ring[i].length;}
+  V.cap={chunks:pre,start:performance.now(),last:performance.now(),speech:false,loudMs:0};
+  $('listenBar').classList.add('on');$('micBtn').classList.add('rec');
+  $('listenText').innerHTML='Ich höre zu…<small>Sprich deinen Befehl – ich höre auf, wenn du eine Pause machst.</small>';
+  ding(true);
+}
+async function finishCapture(ok){
+  const c=V.cap;if(!c)return;
+  V.cap=null;
+  $('micBtn').classList.remove('rec');
+  if(!S.voice)micClose();
+  if(!ok){$('listenBar').classList.remove('on');ding(false);return;}
+  $('listenText').innerHTML='Verstehe…<small>Gemini wandelt deine Aufnahme in Text um.</small>';
+  let res;
+  try{res=await api.transcribe(toWavB64(c.chunks,V.rate||48000));}catch(e){res={ok:false,error:String(e&&e.message||e)};}
+  $('listenBar').classList.remove('on');
+  if(!res||!res.ok){reply('Die Spracheingabe hat nicht geklappt.',esc(res&&res.error||'Unbekannter Fehler'),'#f87171');return;}
+  if(!res.text){ding(false);return;}
+  if(busy)stopRun();
+  userInput.value=res.text;autosize();
+  handleUserMessage(true);
+}
+function toWavB64(chunks,rate){
+  let len=0;for(const c of chunks)len+=c.length;
+  const all=new Float32Array(len);let o=0;for(const c of chunks){all.set(c,o);o+=c.length;}
+  const target=16000,ratio=rate/target,outLen=Math.floor(len/ratio);
+  const pcm=new Int16Array(outLen);
+  for(let i=0;i<outLen;i++){
+    const a=Math.floor(i*ratio),b=Math.min(len,Math.floor((i+1)*ratio));let s=0;for(let j=a;j<b;j++)s+=all[j];
+    const v=Math.max(-1,Math.min(1,b>a?s/(b-a):0));pcm[i]=v<0?v*0x8000:v*0x7fff;
+  }
+  const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
+  const w=(p,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(p+i,s.charCodeAt(i));};
+  w(0,'RIFF');dv.setUint32(4,36+pcm.length*2,true);w(8,'WAVE');w(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,target,true);dv.setUint32(28,target*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,pcm.length*2,true);
+  new Int16Array(buf,44).set(pcm);
+  const bytes=new Uint8Array(buf);let bin='';for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  return btoa(bin);
+}
+function showVoiceState(vs){
+  const st=vs&&vs.state||'off';
+  const txt={off:'Aus.',starting:'Startet…',listening:'✓ Hört auf „Hey Prop“.',error:'Problem: '+(vs&&vs.error||'unbekannt')}[st]||st;
+  setStatus('voiceStatus',st==='listening'?'ok':st==='error'?'err':'info',txt);
+  $('wakeHint').textContent=st==='listening'?'🎙 „Hey Prop“ zum Sprechen':'🎙 Mikro-Knopf zum Sprechen';
+}
+async function voiceSettingsChanged(){
+  if(S.voice){await micOpen();}else if(!V.cap)micClose();
+}
+$('micBtn').onclick=()=>{if(V.cap)finishCapture(true);else voiceListen(0);};
+$('listenStop').onclick=()=>finishCapture(true);
+$('listenCancel').onclick=()=>finishCapture(false);
+api.onVoiceWake(()=>{if(!V.cap)voiceListen(1.2);});
+// Tastenkürzel "Spracheingabe": startet sofort; nochmal drücken = fertig
+if(api.onVoicePtt)api.onVoicePtt(()=>{if(V.cap)finishCapture(true);else voiceListen(0);});
+api.onVoiceState(vs=>{S.voiceState=vs;showVoiceState(vs);});
+if(api.onSettingsChanged)api.onSettingsChanged(async()=>{S=await api.getSettings();showVoiceState(S.voiceState);voiceSettingsChanged();if(drawer.classList.contains('open'))refreshSettings();});
+
+/* ================= Start ================= */
+(async()=>{
+  sendBtn.innerHTML=ICON_SEND;
+  load();
+  try{S=await api.getSettings();}catch(e){}
+  showVoiceState(S.voiceState);
+  try{renderHotkeys();}catch(e){}
+  try{showUpdate(S.update);}catch(e){}
+  if(S.voice)micOpen();
+  refreshStatus();
+  renderWelcome();
+  state.reminders.slice().forEach(schedule);
+  userInput.focus();
+})();
+</script>
+</body>
+</html>
