@@ -24,6 +24,8 @@ WAS GPTPROP KANN
 - Fragen beantworten und Aufgaben am PC erledigen (Programme starten,
   Dateien, Ordner, Einstellungen, PowerShell)
 - In Apps klicken und tippen (z. B. "Starte Minecraft im NoRisk Launcher")
+- Arbeitet im Hintergrund: deine Maus bleibt frei (in Discord/Browsern
+  holt GPTProp zum Tippen kurz den Fokus)
 - Spotify steuern: "pause", "nächstes Lied", "spiel ... auf Spotify"
 - Sprachsteuerung: "Hey Prop" sagen und dann den Befehl
   (Einstellungen -> Sprachsteuerung einschalten; Mikrofon nötig)

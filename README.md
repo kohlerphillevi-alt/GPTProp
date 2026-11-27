@@ -20,6 +20,7 @@ Unter **[Releases](../../releases/latest)** gibt es zwei Varianten:
 - **KI-Chat mit Gemini (gratis):** Eigener API-Key in den Einstellungen. GPTProp wählt automatisch das schnellste verfügbare Gratis-Modell (Flash-Lite) und weicht bei Limits/Ausfällen selbstständig auf andere Modelle aus.
 - **PC-Zugriff:** PowerShell-Befehle, Dateien lesen/schreiben/auflisten, Papierkorb, Programme/Ordner/Webseiten öffnen, Zwischenablage, Systeminfos, Herunterfahren/Neustart.
 - **Jede App bedienen:** Über Windows UI Automation liest GPTProp Knöpfe & Felder von Fenstern und kann klicken und tippen – z. B. *„Starte Minecraft im NoRisk Launcher“*.
+- **Läuft im Hintergrund:** Klicken und Tippen ohne deinen Mauszeiger. Nur Discord und Browser brauchen beim Tippen kurz den Fokus (abschaltbar).
 - **Spotify:** Play/Pause/Weiter/Zurück/Lautstärke/„Was läuft?“ sofort; Songs per Name abspielen mit optionalem kostenlosem Spotify-Developer-Zugang.
 - **Sprachsteuerung „Hey Prop“:** Aktivierungswort wird offline von Windows erkannt, der Befehl per Gemini transkribiert, Antworten werden vorgelesen (Stimme & Tempo einstellbar).
 - **Chatverlauf:** Alle Chats bleiben gespeichert – Seitenleiste mit Suche, Umbenennen und Löschen; der letzte Chat öffnet sich beim Start.

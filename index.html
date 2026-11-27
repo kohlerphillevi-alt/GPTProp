@@ -432,6 +432,8 @@ body.side-open .side{border-right-color:var(--line)}
     <section class="sec">
       <h4>PC-Zugriff &amp; Allgemein</h4>
       <div class="toggle"><span class="t"><b>Aktionen bestätigen</b><span>Aus = GPTProp führt alles sofort aus. An = vor PowerShell-Befehlen, dem Schreiben und Löschen von Dateien nachfragen.</span></span><span class="switch"><input type="checkbox" id="confirmToggle"><i></i></span></div>
+      <div class="toggle"><span class="t"><b>In Discord &amp; Browsern tippen</b><span>Diese Apps brauchen kurz den Fokus: GPTProp wartet, bis du nichts tippst, wechselt für etwa eine Sekunde ins Fenster und zurück. Deine Maus bleibt unberührt.</span></span><span class="switch"><input type="checkbox" id="focusTypingToggle"><i></i></span></div>
+      <div class="toggle"><span class="t"><b>Maus &amp; Tastatur kurz mitbenutzen</b><span>Aus = GPTProp arbeitet nur im Hintergrund, du kannst normal weitermachen. An = hilft bei Apps, die das nicht unterstützen; GPTProp wartet, bis du nichts tust, und stellt Maus und Fenster danach zurück.</span></span><span class="switch"><input type="checkbox" id="takeoverToggle"><i></i></span></div>
       <div class="toggle"><span class="t"><b>Mit Windows starten</b><span>GPTProp startet im Hintergrund, damit Erinnerungen ankommen.</span></span><span class="switch"><input type="checkbox" id="autostartToggle"><i></i></span></div>
     </section>
     <section class="sec">
@@ -689,7 +691,7 @@ Regeln:
 - Handle selbstständig mit Werkzeugen, statt dem Nutzer Befehle zum Abtippen zu geben. Mehrere Schritte nacheinander sind erlaubt.
 - Sei schnell: so wenige Werkzeug-Schritte wie möglich, kurze Antworten, keine unnötigen Rückfragen.
 - Programme starten: app_launch mit dem Namen aus dem Startmenü (z. B. "NoRisk Launcher"). Alternativ open_item mit App-Protokoll (spotify:, discord:, steam:, ms-settings:). Webseiten: open_item mit der URL.
-- In Apps etwas tun (z. B. "starte Minecraft im NoRisk Launcher"): 1) app_launch, 2) direkt ui_click mit dem naheliegenden Knopfnamen (z. B. "Spielen", "Play", "Starten") – ui_click wartet selbst, bis die App geladen ist. 3) Klappt das nicht, ui_snapshot ansehen und den passenden Knopf wählen. Felder: ui_type, Tastenkürzel: ui_keys. Schau mit ui_snapshot nach, ob es geklappt hat, wenn unklar.
+- In Apps etwas tun (z. B. "starte Minecraft im NoRisk Launcher"): 1) app_launch, 2) direkt ui_click mit dem naheliegenden Knopfnamen (z. B. "Spielen", "Play", "Starten") – ui_click wartet selbst, bis die App geladen ist. 3) Klappt das nicht, ui_snapshot ansehen und den passenden Knopf wählen. Felder: ui_type (immer mit window), Tasten: ui_keys. Die Steuerung läuft im Hintergrund, ohne Maus und Tastatur des Nutzers; nur in Discord/Browsern holt ui_type kurz den Fokus. Zum Schreiben einer Discord-Nachricht: richtigen Chat anklicken, dann ui_type mit window "Discord" und press_enter. Nur wenn das Ergebnis sent=true meldet, wurde sie gesendet – sende dann nicht noch einmal. Nur wenn ein Ergebnis "nicht bestätigt" meldet, prüfe einmal mit ui_snapshot (mit filter, das ist schneller). Behaupte nie Erfolg, wenn es nicht gewirkt hat – sag dann, dass diese App den Schalter "Maus & Tastatur kurz mitbenutzen" braucht.
 - Keine interaktiven Befehle (Read-Host, pause, Editor-Prompts). Lange Ausgaben begrenzen (Select-Object -First, Format-Table -AutoSize | Out-String -Width 200).
 - Frag NICHT nach Erlaubnis und bitte nicht um Bestätigung: Was der Nutzer verlangt, führst du sofort aus – auch Öffnen, Schließen, Herunterfahren, Neustarten, Abmelden, Installieren oder Löschen. Sag danach kurz, was du getan hast.
 - Herunterfahren: run_command "shutdown /s /t 5", Neustart: "shutdown /r /t 5", Abmelden: "shutdown /l", Energiesparen: "rundll32.exe powrprof.dll,SetSuspendState 0,1,0". Abbrechen: "shutdown /a".
@@ -1207,6 +1209,8 @@ function closeSettings(){if(hkRec)stopHkRec();drawer.classList.remove('open');sc
 async function refreshSettings(){
   S=await api.getSettings();
   $('keyInput').placeholder=S.hasKey?`Gespeichert (${S.keyMasked}) – zum Ersetzen neu einfügen`:'AIza…';
+  $('takeoverToggle').checked=!!S.takeover;
+  $('focusTypingToggle').checked=S.focusTyping!==false;
   $('confirmToggle').checked=!!S.confirmActions;$('autostartToggle').checked=!!S.autostart;
   $('voiceToggle').checked=!!S.voice;$('voiceSpeakToggle').checked=S.voiceSpeak!==false;$('voiceSens').value=S.voiceSensitivity||'normal';
   fillVoices();
@@ -1257,6 +1261,8 @@ $('eyeBtn').onclick=()=>{const i=$('keyInput');i.type=i.type==='password'?'text'
 $('modelSelect').onchange=async e=>{S=await api.setSettings({model:e.target.value});refreshStatus();setStatus('modelStatus','ok',e.target.value==='auto'?'Automatische Auswahl aktiv.':'Fest eingestellt – bei Ausfall wird trotzdem auf andere Modelle ausgewichen.');};
 $('reloadModelsBtn').onclick=()=>{if(!S.hasKey){setStatus('modelStatus','err','Bitte zuerst einen Key speichern.');return;}loadModels(true);};
 $('confirmToggle').onchange=async e=>{S=await api.setSettings({confirmActions:e.target.checked});if(e.target.checked)sessionAllow=false;};
+$('focusTypingToggle').onchange=async e=>{S=await api.setSettings({focusTyping:e.target.checked});};
+$('takeoverToggle').onchange=async e=>{S=await api.setSettings({takeover:e.target.checked});};
 $('autostartToggle').onchange=async e=>{S=await api.setSettings({autostart:e.target.checked});};
 $('voiceToggle').onchange=async e=>{S=await api.setSettings({voice:e.target.checked});voiceSettingsChanged();};
 $('voiceSpeakToggle').onchange=async e=>{S=await api.setSettings({voiceSpeak:e.target.checked});if(!e.target.checked)try{speechSynthesis.cancel();}catch(x){}};

@@ -459,24 +459,60 @@ async function transcribe(b64) {
   if (/^NICHTS\.?$/i.test(t)) t = '';
   return { ok: true, text: t };
 }
-const UIA_ACTIONS = ['windows', 'launch', 'focus', 'snapshot', 'click', 'type', 'keys', 'click_at'];
+const UIA_ACTIONS = ['windows', 'launch', 'snapshot', 'click', 'type', 'keys', 'click_at'];
+// Dauerhaft laufender Steuerungsdienst (spart pro Aktion 1–2 Sekunden PowerShell-Start)
+let uiaProc = null, uiaSeq = 0, uiaChain = Promise.resolve();
+const uiaPending = new Map();
+function uiaStop() { if (uiaProc) { try { uiaProc.kill(); } catch { /* egal */ } uiaProc = null; } }
+function uiaStart() {
+  if (uiaProc) return uiaProc;
+  const file = uiaPath || ensureUia();
+  if (!file) return null;
+  const proc = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', file, '-Server'], { windowsHide: true });
+  uiaProc = proc;
+  let buf = '';
+  proc.stdout.on('data', (d) => {
+    buf += d.toString('utf8');
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith('GP:')) continue;
+      try { const j = JSON.parse(line.slice(3)); const done = uiaPending.get(j.id); if (done) { delete j.id; done(j); } } catch { /* unvollständig */ }
+    }
+  });
+  proc.stderr.on('data', (d) => log('Steuerungsdienst:', d.toString('utf8').trim().slice(0, 300)));
+  proc.stdin.on('error', () => { /* Prozess weg */ });
+  const gone = () => { if (uiaProc === proc) uiaProc = null; for (const done of [...uiaPending.values()]) done({ error: 'Steuerungsdienst wurde beendet.' }); };
+  proc.on('error', gone); proc.on('close', gone);
+  return proc;
+}
+function uiaRequest(action, args, wait) {
+  return new Promise((resolve) => {
+    const proc = uiaStart();
+    if (!proc) { resolve({ error: 'App-Steuerung nicht verfügbar.' }); return; }
+    const id = String(++uiaSeq);
+    const finish = (res) => { clearTimeout(timer); uiaPending.delete(id); resolve(res); };
+    const timer = setTimeout(() => { uiaStop(); finish({ error: 'Zeitüberschreitung bei der App-Steuerung.' }); }, (wait + 30) * 1000);
+    uiaPending.set(id, finish);
+    const b64 = Buffer.from(JSON.stringify({ ...args, wait_seconds: wait }), 'utf8').toString('base64');
+    proc.stdin.write(`${id}|${action}|${b64}\n`);
+  });
+}
 async function uia(action, args = {}) {
   if (!UIA_ACTIONS.includes(action)) return { error: 'Unbekannte Aktion.' };
-  const file = uiaPath || ensureUia();
-  if (!file) return { error: 'App-Steuerung nicht verfügbar.' };
-  const wait = Math.min(Math.max(Number(args.wait_seconds ?? 8) || 0, 0), 60);
-  const b64 = Buffer.from(JSON.stringify({ ...args, wait_seconds: wait }), 'utf8').toString('base64');
-  const r = await runPowerShell(`& '${file.replace(/'/g, "''")}' '${action}' '${b64}'`, null, wait + 40, 60000);
-  const line = String(r.stdout || '').trim().split('\n').filter((l) => l.trim().startsWith('{')).pop();
-  try { return JSON.parse(line); }
-  catch { return { error: r.timed_out ? 'Zeitüberschreitung bei der App-Steuerung.' : 'App-Steuerung fehlgeschlagen.', details: String(r.stderr || r.error || r.stdout || '').slice(0, 400) }; }
+  const wait = Math.min(Math.max(Number(args.wait_seconds ?? 6) || 0, 0), 60);
+  // Ob Maus/Tastatur benutzt werden dürfen, bestimmt nur die Einstellung – nie die KI
+  const safe = { ...args, allow_takeover: settings.takeover === true, allow_keys: settings.focusTyping !== false };
+  const run = uiaChain.then(() => uiaRequest(action, safe, wait));
+  uiaChain = run.catch(() => {});
+  return run;
 }
 
 const TOOLS = {
   async app_launch({ name }) { return uia('launch', { name }); },
   async ui_windows() { return uia('windows', {}); },
-  async ui_snapshot(a) { return uia('snapshot', { window: a.window, filter: a.filter, wait_seconds: a.wait_seconds ?? 10 }); },
-  async ui_click(a) { return uia('click', { window: a.window, name: a.name, type: a.type, index: a.index, mouse: a.mouse, right: a.right, double: a.double, wait_seconds: a.wait_seconds ?? 15 }); },
+  async ui_snapshot(a) { return uia('snapshot', { window: a.window, filter: a.filter, wait_seconds: a.wait_seconds ?? 8 }); },
+  async ui_click(a) { return uia('click', { window: a.window, name: a.name, type: a.type, index: a.index, mouse: a.mouse, right: a.right, double: a.double, wait_seconds: a.wait_seconds ?? 8 }); },
   async ui_type(a) { return uia('type', { window: a.window, field: a.field, text: a.text, press_enter: a.press_enter, append: a.append, wait_seconds: a.wait_seconds ?? 8 }); },
   async ui_keys(a) { return uia('keys', { window: a.window, keys: a.keys, wait_seconds: a.wait_seconds ?? 5 }); },
   async ui_click_at(a) { return uia('click_at', { window: a.window, x: a.x, y: a.y, right: a.right, double: a.double, wait_seconds: 3 }); },
@@ -564,7 +600,7 @@ function publicSettings() {
     hasKey: !!key, keyMasked: mask(key), model: settings.model || 'auto', confirmActions: settings.confirmActions !== false,
     autostart: app.getLoginItemSettings().openAtLogin, version: app.getVersion(), logFile: LOG_FILE(),
     hasSpotify: !!(spotifyCreds().id && spotifyCreds().secret), spotifyIdMasked: mask(spotifyCreds().id),
-    autoUpdate: settings.autoUpdate !== false, update: updState,
+    takeover: settings.takeover === true, focusTyping: settings.focusTyping !== false, autoUpdate: settings.autoUpdate !== false, update: updState,
     hotkeyOpen: hk('hotkeyOpen'), hotkeyVoice: hk('hotkeyVoice'), hotkeyStatus: { ...hotkeyStatus }, hotkeyDefaults: HOTKEY_DEFAULTS,
     voice: !!settings.voice, voiceSpeak: settings.voiceSpeak !== false, ttsVoice: settings.ttsVoice || '', ttsRate: settings.ttsRate || 1.25, voiceSensitivity: settings.voiceSensitivity || 'normal', voiceState, lastModel: lastModel.replace(/^models\//, ''),
     env: { user: os.userInfo().username, home: os.homedir(), desktop: app.getPath('desktop'), downloads: app.getPath('downloads'), documents: app.getPath('documents'), os: `${os.type()} ${os.release()}` }
@@ -588,6 +624,8 @@ ipcMain.handle('settings:set', (e, s = {}) => {
     if (changed && settings.voice) { wakeStop(); setTimeout(applyVoice, 300); }
   }
   if (typeof s.voice === 'boolean') { settings.voice = s.voice; applyVoice(); }
+  if (typeof s.takeover === 'boolean') settings.takeover = s.takeover;
+  if (typeof s.focusTyping === 'boolean') settings.focusTyping = s.focusTyping;
   if (typeof s.autoUpdate === 'boolean') { settings.autoUpdate = s.autoUpdate; scheduleUpdates(); }
   // Tastenkürzel: prüfen, registrieren; schlägt es fehl, altes Kürzel behalten
   const hotkeyError = {};
@@ -897,6 +935,7 @@ function installUpdate() {
   if (updState.state !== 'ready' || !autoUpdater) { if (updState.state === 'available') shell.openExternal(updState.url).catch(() => {}); return false; }
   quitting = true;
   wakeStop();
+  uiaStop();
   setImmediate(() => { try { autoUpdater.quitAndInstall(true, true); } catch (e) { log('Update-Installation fehlgeschlagen:', e.message); quitting = false; } });
   return true;
 }
@@ -972,6 +1011,7 @@ else {
   app.whenReady().then(() => {
     loadSettings();
     ensureUia();
+    setTimeout(uiaStart, 1500); // vorwärmen, damit die erste Aktion sofort läuft
     // Mikrofon (Sprachsteuerung) und Benachrichtigungen erlauben
     const allowed = ['media', 'notifications', 'speaker-selection'];
     session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(allowed.includes(perm)));
@@ -986,5 +1026,5 @@ else {
     if (k) fetchModels(k).catch((e) => log('Vorab-Laden der Modelle fehlgeschlagen:', e.message));
   });
 }
-app.on('before-quit', () => { quitting = true; wakeStop(); });
+app.on('before-quit', () => { quitting = true; wakeStop(); uiaStop(); });
 app.on('will-quit', () => globalShortcut.unregisterAll());
